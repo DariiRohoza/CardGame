@@ -13,8 +13,8 @@ MAX_GENERATED_CARD_RANK = 15
 
 MAX_DECK_SIZE = 52
 
-START_PLAYER_HEALTH = 100.0 * (2 ** 2)
-ACTION_AMOUNT = 1 * 2
+START_PLAYER_HEALTH = 100.0
+ACTION_AMOUNT = 1
 
 MIN_GAME_PLAYERS = 2
 MAX_GAME_PLAYERS = 10
@@ -182,9 +182,6 @@ class GameLoop:
                     user_choice_option = int(input(f"Input your choice: "))
                 except ValueError:
                     print(f"The input is of invalid value, try again...")
-                    continue
-                user_in = input(f"Input \"retry\" if you wish to pick a different card: ")
-                if user_in.lower() == "retry":
                     continue
                 break
 
@@ -401,7 +398,7 @@ class GameLoop:
             user_card = card_choosing(curr_hand)
             curr_hand.remove(user_card)
 
-        for i in range(cards_removed):
+        for _ in range(cards_removed):
             curr_hand.append(self.deck.draw_card())
         print(f"{cards_removed} new cards have been added to your hand\n")
         self.iterate_turn()
