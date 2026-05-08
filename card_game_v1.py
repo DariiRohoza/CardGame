@@ -156,6 +156,7 @@ class GameLoop:
 
     def main_loop(self):
         while not self.conclude_game:
+            user_choice_option = 0
             if len(self.deck) == 0:
                 self.deck.fill()
                 self.deck.shuffle()
@@ -163,35 +164,40 @@ class GameLoop:
 
             curr_player, curr_hand = self.fetch_curr()
 
-            print(f">>> It is now {curr_player.name}'s turn\n")
-            print(f"Pick an options from those below by inputting the number in front of it\n"
+            print(f">>> It is now {curr_player.name}'s turn\n\n"
+                  f"Pick an options from those below by inputting the number in front of it\n"
                   f"00 : Conclude Game / Quit\n"
-                  f"01 : Exchange half of your hand\n"
+                  f"01 : Attack Player\n"
                   f"02 : View Other Players\n"
                   f"03 : View Hand\n"
-                  f"04 : Attack Player\n"
-                  f"05 : Refurbish Card Suit\n"
-                  f"06 : Increase Card Rank\n"
-                  f"07 : Merge Card Rank\n"
-                  f"08 : Stylize Card\n"
+                  f"04 : Refurbish Card Suit\n"
+                  f"05 : Increase Card Rank\n"
+                  f"06 : Merge Card Rank\n"
+                  f"07 : Stylize Card\n"
+                  f"08 : Exchange half of your hand\n"
                   f"09 : Defend\n")
 
-            try:
-                user_choice_option = int(input(f"Input your choice: "))
-            except ValueError:
-                print(f"The input is of invalid value, try again...")
-                continue
+            while True:
+                try:
+                    user_choice_option = int(input(f"Input your choice: "))
+                except ValueError:
+                    print(f"The input is of invalid value, try again...")
+                    continue
+                user_in = input(f"Input \"retry\" if you wish to pick a different card: ")
+                if user_in.lower() == "retry":
+                    continue
+                break
 
             match user_choice_option:
                 case 0: self.conclude_game = True
-                case 1: self.drop_half_cards(curr_hand)
+                case 1: self.attack_turn(curr_player, curr_hand)
                 case 2: print_players(self.player_list, curr_player)
                 case 3: print_hand(curr_hand)
-                case 4: self.attack_turn(curr_player, curr_hand)
-                case 5: self.refurbish_card_suit(curr_hand, curr_player)
-                case 6: self.increase_card_rank(curr_hand, curr_player)
-                case 7: self.merge_card_rank(curr_hand)
-                case 8: self.stylize_card(curr_hand)
+                case 4: self.refurbish_card_suit(curr_hand, curr_player)
+                case 5: self.increase_card_rank(curr_hand, curr_player)
+                case 6: self.merge_card_rank(curr_hand)
+                case 7: self.stylize_card(curr_hand)
+                case 8: self.drop_half_cards(curr_hand)
                 case 9: self.defend(curr_player, 2)
 
                 case _:
@@ -438,7 +444,7 @@ def attack_player(attacker: Player, target: Player, used_card: Card):
     if target.defending >= DEFENSE_THRESHOLD:
         damage = 0
         remaining_defense = (target.defending + 1 // 2) + 1
-        print(f" * Nullified all damage taken at the cost of {remaining_defense} defense stacks")
+        print(f" * Nullified all damage taken at the cost of {target.defending - remaining_defense} defense stacks")
         target.defending = remaining_defense
 
     else:
@@ -509,7 +515,6 @@ if __name__ == "__main__":
     game_loop.add_player(player2)
 
     game_loop.initialize_game()
-    print(game_loop)
     game_loop.main_loop()
 
 # TODO : IMPLEMENT THE FOLLOWING IN THE FUTURE
