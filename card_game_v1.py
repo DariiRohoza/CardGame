@@ -7,7 +7,7 @@ style_lib = {"Failed": 0.01, "Dull": 0.75, "Cool": 1.0, "Bold": 1.25, "Awesome":
 style_lib_weights = [0.01, 0.13, 0.50, 0.15, 0.10, 0.05, 0.03, 0.02, 0.01]
 suit_lib = {0: "A", 1: "B", 2: "C", 3: "D", 4: "E"}
 
-# balanced default : hp = 100, actions = 1 || Multiply actions by n and multiple health by n ** 2
+# balanced default : hp = 100, actions = 1 || Multiply actions by n and multiply health by n ** 2
 MIN_GENERATED_CARD_RANK = 1
 MAX_GENERATED_CARD_RANK = 15
 
@@ -79,15 +79,12 @@ class Deck:
     def shuffle(self):
         shuffle(self.cards)
 
-    def add_card(self, card: Card):
-        self.cards.append(card)
-
     # fill the deck to the brim with random cards
     def fill(self):
         global MAX_DECK_SIZE
         cards_to_add = MAX_DECK_SIZE - len(self.cards)
         for _ in range(cards_to_add):
-            self.add_card(generate_card())
+            self.cards.append(generate_card())
 
 # ── Player ──────────────────────────────
 class Player:
@@ -159,19 +156,25 @@ class GameLoop:
 
     def main_loop(self):
         while not self.conclude_game:
+            if len(self.deck) == 0:
+                self.deck.fill()
+                self.deck.shuffle()
+                print(f"--<  Refilled Deck  >--\n")
+
             curr_player, curr_hand = self.fetch_curr()
 
             print(f">>> It is now {curr_player.name}'s turn\n")
             print(f"Pick an options from those below by inputting the number in front of it\n"
-                  f"0 : Conclude Game / Quit\n"
-                  f"1 : Attack Player\n"
-                  f"2 : View Other Players\n"
-                  f"3 : View Hand\n"
-                  f"4 : Refurbish Card Suit\n"
-                  f"5 : Increase Card Rank\n"
-                  f"6 : Merge Card Rank\n"
-                  f"7 : Stylize Card\n"
-                  f"8 : Defend\n")
+                  f"00 : Conclude Game / Quit\n"
+                  f"01 : Exchange half of your hand\n"
+                  f"02 : View Other Players\n"
+                  f"03 : View Hand\n"
+                  f"04 : Attack Player\n"
+                  f"05 : Refurbish Card Suit\n"
+                  f"06 : Increase Card Rank\n"
+                  f"07 : Merge Card Rank\n"
+                  f"08 : Stylize Card\n"
+                  f"09 : Defend\n")
 
             try:
                 user_choice_option = int(input(f"Input your choice: "))
@@ -181,14 +184,15 @@ class GameLoop:
 
             match user_choice_option:
                 case 0: self.conclude_game = True
-                case 1: self.attack_turn(curr_player, curr_hand)
+                case 1: self.drop_half_cards(curr_hand)
                 case 2: print_players(self.player_list, curr_player)
                 case 3: print_hand(curr_hand)
-                case 4: self.refurbish_card_suit(curr_hand, curr_player)
-                case 5: self.increase_card_rank(curr_hand, curr_player)
-                case 6: self.merge_card_rank(curr_hand)
-                case 7: self.stylize_card(curr_hand)
-                case 8: self.defend(curr_player, 2)
+                case 4: self.attack_turn(curr_player, curr_hand)
+                case 5: self.refurbish_card_suit(curr_hand, curr_player)
+                case 6: self.increase_card_rank(curr_hand, curr_player)
+                case 7: self.merge_card_rank(curr_hand)
+                case 8: self.stylize_card(curr_hand)
+                case 9: self.defend(curr_player, 2)
 
                 case _:
                     print(f"Invalid input, try again...\n")
@@ -251,7 +255,7 @@ class GameLoop:
                 print(f"Player {user_chosen_target.name} has been reduced to 0 or less hit points")
 
             if len(self.player_list) == 1:
-                print(f"A winner has been found!")
+                print(f"A winner has been found!\n")
                 self.conclude_game = True
                 game_winner(self.player_list[0])
 
@@ -380,7 +384,20 @@ class GameLoop:
 
     def defend(self, curr_player, def_stacks: int):
         curr_player.defending += def_stacks
-        print(f"{curr_player.name} has gained {def_stacks} stack(s) of defense")
+        print(f"{curr_player.name} has gained {def_stacks} stack(s) of defense\n")
+        self.iterate_turn()
+
+    def drop_half_cards(self, curr_hand: list[Card]):
+        cards_removed = len(curr_hand) // 2
+        for i in range(cards_removed):
+            print(f"Choose a card to remove ({i}/{cards_removed} removed already)")
+            print_hand(curr_hand)
+            user_card = card_choosing(curr_hand)
+            curr_hand.remove(user_card)
+
+        for i in range(cards_removed):
+            curr_hand.append(self.deck.draw_card())
+        print(f"{cards_removed} new cards have been added to your hand\n")
         self.iterate_turn()
 
 # ── Util / Helper Functions ──────────────────────────────
@@ -420,8 +437,9 @@ def attack_player(attacker: Player, target: Player, used_card: Card):
 
     if target.defending >= DEFENSE_THRESHOLD:
         damage = 0
-        print(f" * Nullified all damage taken at the cost of 4 defense stacks")
-        target.defending -= 4
+        remaining_defense = (target.defending + 1 // 2) + 1
+        print(f" * Nullified all damage taken at the cost of {remaining_defense} defense stacks")
+        target.defending = remaining_defense
 
     else:
         if target.defending > 0:
@@ -429,28 +447,33 @@ def attack_player(attacker: Player, target: Player, used_card: Card):
             print(f" * Nullified 1 target defense stack")
             target.defending -= 1 # defense stacks get removed one by one, but they all impact damage taken
 
+        if target.weakness == suit_lib[card_value[0]]:
+            damage *= 1.5
+            print(f" * Target weakness amplified damage ({target.weakness})")
+            target.defending -= 1
+            print(f"* Weakness caused target to lose another defense stack")
         if target.strength == suit_lib[card_value[0]]:
             damage *= 0.75
             print(f" * Target strength reduced damage ({target.strength})")
-        elif target.weakness == suit_lib[card_value[0]]:
-            damage *= 1.5
-            print(f" * Target weakness amplified damage ({target.weakness})")
 
+        if attacker.weakness == suit_lib[card_value[0]]:
+            damage *= 0.75
+            print(f" * Nullified attacker weakness ({attacker.weakness})")
+            attacker.weakness = ""
         if attacker.strength == suit_lib[card_value[0]]:
             damage *= 1.5
             print(f" * Nullified attacker strength ({attacker.strength})")
             attacker.strength = ""
-        elif attacker.weakness == suit_lib[card_value[0]]:
-            damage *= 0.75
-            print(f" * Nullified attacker weakness ({attacker.weakness})")
-            attacker.weakness = ""
 
     target.health -= damage
-    target.weakness = suit_lib[card_value[0]]
-    target.strength = suit_lib[(card_value[0] + 2) % len(suit_lib)]
 
-    print(f"{target.name}'s health after attacking : {target.health:,.2f}\n"
-          f"{target.name} is now weak to {target.weakness} and strong with {target.strength}\n")
+    if damage > 0:
+        target.weakness = suit_lib[card_value[0]]
+        target.strength = suit_lib[(card_value[0] + 2) % len(suit_lib)]
+        print(f"{target.name}'s health after attacking : {target.health:,.2f}\n"
+              f"{target.name} is now weak to {target.weakness} and strong with {target.strength}\n")
+    else:
+        print(f"{target.name}'s was unaffected by the attack\n")
 
 def card_choosing(curr_hand: list[Card]) -> Card:
     user_chosen_card = curr_hand[0]
@@ -490,6 +513,12 @@ if __name__ == "__main__":
     game_loop.main_loop()
 
 # TODO : IMPLEMENT THE FOLLOWING IN THE FUTURE
-# ACTION : the player discards some cards and draws new ones from the deck (MAX half (round down) of hand)
+
 # FEATURE : negative ranks as healing mechanics because math is math
     # ACTION : invert card (2 actions), can be used together with negative ranks to make a rapid supply of healing cards
+
+# FEATURE : player move choice, changing a move choice is an ACTION, all are started with "stationary"
+    # B-hop : removes an additional defense stack from the enemy if your strength matches the card you used
+    # Hyper : 1/3 chance to increase the rank of a random card by 3 every action
+    # Super : constant x0.80 damage reduction
+    # Ultra : 5/8 chance to crit (x1.5 dmg) on attacks
