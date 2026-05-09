@@ -316,15 +316,17 @@ def attack_player(attacker: Player, target: Player, used_card: Card):
 
     else:
         if target.defending > 0:
-            damage *= 0.85 ** target.defending
+            damage *= 0.90 ** target.defending
             print(f" * Nullified 1 target defense stack")
             target.defending -= 1 # defense stacks get removed one by one, but they all impact damage taken
 
         if target.weakness == suit_lib[card_value[0]]:
             damage *= 1.5
             print(f" * Target weakness amplified damage ({target.weakness})")
-            target.defending -= 1
-            print(f"* Weakness caused target to lose another defense stack")
+            if target.defending > 0:
+                target.defending -= 1
+                print(f" * Weakness caused target to lose another defense stack")
+
         if target.strength == suit_lib[card_value[0]]:
             damage *= 0.75
             print(f" * Target strength reduced damage ({target.strength})")
