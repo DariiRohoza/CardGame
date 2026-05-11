@@ -2,9 +2,9 @@ from pyfiglet import figlet_format
 from card_class import Card
 from deck_class import Deck
 from player_class import Player
-from constants_libraries import (suit_lib, style_lib, MIN_GENERATED_CARD_RANK,
-                                 MIN_GAME_PLAYERS, MAX_GAME_PLAYERS, PLAYER_HAND_SIZE,
-                                 DEFENSE_THRESHOLD, SUIT_PENALTY, IDENTICAL_BOOST)
+from constants_libraries import (suit_lib, style_lib, MIN_GENERATED_CARD_RANK, MIN_GAME_PLAYERS,
+                                 MAX_GAME_PLAYERS, PLAYER_HAND_SIZE, DEFENSE_THRESHOLD,
+                                 STACK_RANK_LIMIT, SUIT_PENALTY, IDENTICAL_BOOST)
 
 class GameLoop:
     def __init__(self):
@@ -53,6 +53,7 @@ class GameLoop:
                   f"Pick an options from those below by inputting the number in front of it\n"
                   f"00 : Conclude Game / Quit\n"
                   f"01 : Attack Player\n"
+                  f"11 : Stack Attack Value\n"
                   f"02 : View Other Players\n"
                   f"03 : View Hand\n"
                   f"04 : Refurbish Card Suit\n"
@@ -73,6 +74,7 @@ class GameLoop:
             match user_choice_option:
                 case 0: self.conclude_game = True
                 case 1: self.attack_turn(curr_player, curr_hand)
+                case 11: self.stack_attack_value(curr_hand, curr_player)
                 case 2: print_players(self.player_list, curr_player)
                 case 3: print_hand(curr_hand)
                 case 4: self.refurbish_card_suit(curr_hand, curr_player)
@@ -133,7 +135,7 @@ class GameLoop:
         if user_chosen_target is not None and user_chosen_card is not None:
             print(f"{curr_player.name} has decided to attack {user_chosen_target.name} using:", user_chosen_card)
 
-            attack_player(curr_player, user_chosen_target, user_chosen_card)
+            attack_player(user_chosen_card, curr_player, user_chosen_target)
 
             curr_hand.remove(user_chosen_card)
             curr_hand.append(self.deck.draw_card())
@@ -148,6 +150,31 @@ class GameLoop:
                 game_winner(self.player_list[0])
 
         self.iterate_turn()
+
+    def stack_attack_value(self, curr_hand: list[Card], curr_player: Player) -> bool:
+        filter_hand = []
+        for item in curr_hand:
+            if item.card_value[1] <= STACK_RANK_LIMIT:
+                filter_hand.append(item)
+
+        if len(filter_hand) == 0:
+            print(f"You have no eligible cards to stack attack value (card rank must be < {STACK_RANK_LIMIT})"
+                  f"This action didn't take a turn action")
+            return False
+
+        print(f"Choose a card from the eligible below to stack their attack value by inputting the number in front of it")
+        print_hand(filter_hand)
+        chosen_card = card_choosing(filter_hand)
+        curr_hand.remove(chosen_card)
+        value, weakness_used, strength_used = evaluate_card(chosen_card, curr_player)
+        evaluate_multipliers(curr_player, weakness_used, strength_used)
+
+        print(f"Increased {curr_player.name} attack stack by {value}\n")
+        curr_player.attack_stack += value
+
+        curr_hand.append(self.deck.draw_card())
+        self.iterate_turn()
+        return True
 
     def refurbish_card_suit(self, curr_hand: list[Card], curr_player: Player):
         print(f"Pick a card to be refurbished from your hand by inputting the number in front of it")
@@ -304,9 +331,35 @@ def game_winner(winner: Player):
     print(f"The player that has eliminated all the other players and won is!\n",
           figlet_format(f"{winner.name}", font="larry3d"))
 
-def attack_player(attacker: Player, target: Player, used_card: Card):
-    card_style, card_value = used_card.style, used_card.card_value
-    damage = card_value[1] * style_lib[card_style]
+
+def evaluate_card(used_card: Card, curr_player: Player, stack_apply: bool=False):
+    weakness_used = False
+    strength_used = False
+
+    card_style, (card_suit, card_rank) = used_card.style, used_card.card_value
+    value = card_rank
+    value += curr_player.attack_stack if stack_apply else 0
+    value *= style_lib[card_style]
+    if curr_player.weakness == suit_lib[card_suit]:
+        value *= 0.75
+        print(f" * Used {curr_player.name} weakness ({curr_player.weakness})")
+        weakness_used = True
+    if curr_player.strength == suit_lib[card_suit]:
+        value *= 1.5
+        print(f" * Used {curr_player.name} strength ({curr_player.strength})")
+        strength_used = True
+
+    return value, weakness_used, strength_used
+
+def evaluate_multipliers(curr_player: Player, weakness_used: bool, strength_used: bool):
+    if weakness_used:
+        curr_player.weakness = ""
+    if strength_used:
+        curr_player.strength = ""
+
+def attack_player(used_card: Card, attacker: Player, target: Player):
+    card_style, (card_suit, card_rank) = used_card.style, used_card.card_value
+    damage, weakness_used, strength_used = evaluate_card(used_card, attacker, True)
 
     if target.defending >= DEFENSE_THRESHOLD:
         damage = 0
@@ -320,31 +373,21 @@ def attack_player(attacker: Player, target: Player, used_card: Card):
             print(f" * Nullified 1 target defense stack")
             target.defending -= 1 # defense stacks get removed one by one, but they all impact damage taken
 
-        if target.weakness == suit_lib[card_value[0]]:
+        if target.weakness == suit_lib[card_suit]:
             damage *= 1.5
             print(f" * Target weakness amplified damage ({target.weakness})")
             if target.defending > 0:
                 target.defending -= 1
                 print(f" * Weakness caused target to lose another defense stack")
-
-        if target.strength == suit_lib[card_value[0]]:
+        if target.strength == suit_lib[card_suit]:
             damage *= 0.75
             print(f" * Target strength reduced damage ({target.strength})")
 
-        if attacker.weakness == suit_lib[card_value[0]]:
-            damage *= 0.75
-            print(f" * Nullified attacker weakness ({attacker.weakness})")
-            attacker.weakness = ""
-        if attacker.strength == suit_lib[card_value[0]]:
-            damage *= 1.5
-            print(f" * Nullified attacker strength ({attacker.strength})")
-            attacker.strength = ""
-
-    target.health -= damage
-
+    evaluate_multipliers(attacker, weakness_used, strength_used)
     if damage > 0:
-        target.weakness = suit_lib[card_value[0]]
-        target.strength = suit_lib[(card_value[0] + 2) % len(suit_lib)]
+        target.health -= damage
+        target.weakness = suit_lib[card_suit]
+        target.strength = suit_lib[(card_suit + 2) % len(suit_lib)]
         print(f"{target.name}'s health after attacking : {target.health:,.2f}\n"
               f"{target.name} is now weak to {target.weakness} and strong with {target.strength}\n")
     else:
