@@ -392,6 +392,9 @@ def attack_player(used_card: Card, attacker: Player, target: Player):
               f"{target.name} is now weak to {target.weakness} and strong with {target.strength}\n")
     else:
         print(f"{target.name}'s was unaffected by the attack\n")
+    
+    if attacker.attack_stack > 0:
+        attacker.attack_stack = 0
 
 def card_choosing(curr_hand: list[Card]) -> Card:
     user_chosen_card = curr_hand[0]
