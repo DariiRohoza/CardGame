@@ -158,7 +158,7 @@ class GameLoop:
                 filter_hand.append(item)
 
         if len(filter_hand) == 0:
-            print(f"You have no eligible cards to stack attack value (card rank must be < {STACK_RANK_LIMIT})"
+            print(f"You have no eligible cards to stack attack value (card rank must be < {STACK_RANK_LIMIT})\n"
                   f"This action didn't take a turn action")
             return False
 
@@ -361,6 +361,10 @@ def attack_player(used_card: Card, attacker: Player, target: Player):
     card_style, (card_suit, card_rank) = used_card.style, used_card.card_value
     damage, weakness_used, strength_used = evaluate_card(used_card, attacker, True)
 
+    if attacker.attack_stack > 0:
+        print(f" * Nullified attacker damage stack")
+        attacker.attack_stack = 0
+
     if target.defending >= DEFENSE_THRESHOLD:
         damage = 0
         remaining_defense = 1 + (target.defending + 1) // 2
@@ -392,9 +396,6 @@ def attack_player(used_card: Card, attacker: Player, target: Player):
               f"{target.name} is now weak to {target.weakness} and strong with {target.strength}\n")
     else:
         print(f"{target.name}'s was unaffected by the attack\n")
-    
-    if attacker.attack_stack > 0:
-        attacker.attack_stack = 0
 
 def card_choosing(curr_hand: list[Card]) -> Card:
     user_chosen_card = curr_hand[0]
