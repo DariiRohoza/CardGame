@@ -363,7 +363,7 @@ def attack_player(used_card: Card, attacker: Player, target: Player):
 
     if target.defending >= DEFENSE_THRESHOLD:
         damage = 0
-        remaining_defense = (target.defending + 1 // 2) + 1
+        remaining_defense = 1 + (target.defending + 1) // 2
         print(f" * Nullified all damage taken at the cost of {target.defending - remaining_defense} defense stacks")
         target.defending = remaining_defense
 
