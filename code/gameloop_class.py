@@ -4,6 +4,7 @@ from deck_class import Deck
 from player_class import Player
 from constants_libraries import (suit_lib, style_lib, MIN_GENERATED_CARD_RANK, MIN_GAME_PLAYERS,
                                  MAX_GAME_PLAYERS, PLAYER_HAND_SIZE, DEFENSE_THRESHOLD,
+                                 DEFENSE_WEAKNESS_LIM, DEFENSE_STRENGTH_LIM, MIN_WEAKNESS_CRITICAL,
                                  STACK_RANK_LIMIT, SUIT_PENALTY, IDENTICAL_BOOST)
 
 class GameLoop:
@@ -331,7 +332,6 @@ def game_winner(winner: Player):
     print(f"The player that has eliminated all the other players and won is!\n",
           figlet_format(f"{winner.name}", font="larry3d"))
 
-
 def evaluate_card(used_card: Card, curr_player: Player, stack_apply: bool=False):
     weakness_used = False
     strength_used = False
@@ -345,7 +345,7 @@ def evaluate_card(used_card: Card, curr_player: Player, stack_apply: bool=False)
         print(f" * Used {curr_player.name} weakness ({curr_player.weakness})")
         weakness_used = True
     if curr_player.strength == suit_lib[card_suit]:
-        value *= 1.5
+        value *= 1.50
         print(f" * Used {curr_player.name} strength ({curr_player.strength})")
         strength_used = True
 
@@ -362,30 +362,40 @@ def attack_player(used_card: Card, attacker: Player, target: Player):
     damage, weakness_used, strength_used = evaluate_card(used_card, attacker, True)
 
     if attacker.attack_stack > 0:
-        print(f" * Nullified attacker damage stack")
+        print(f" * Used attacker damage stack to amplify damage")
         attacker.attack_stack = 0
 
-    if target.defending >= DEFENSE_THRESHOLD:
+    if DEFENSE_THRESHOLD <= target.defending:
         damage = 0
         remaining_defense = 1 + (target.defending + 1) // 2
         print(f" * Nullified all damage taken at the cost of {target.defending - remaining_defense} defense stacks")
         target.defending = remaining_defense
 
     else:
-        if target.defending > 0:
+        if 0 < target.defending:
             damage *= 0.90 ** target.defending
             print(f" * Nullified 1 target defense stack")
             target.defending -= 1 # defense stacks get removed one by one, but they all impact damage taken
 
         if target.weakness == suit_lib[card_suit]:
-            damage *= 1.5
+            damage *= 1.50
             print(f" * Target weakness amplified damage ({target.weakness})")
-            if target.defending > 0:
-                target.defending -= 1
-                print(f" * Weakness caused target to lose another defense stack")
+            if 0 < target.defending:
+                # weak_def_crit scales effectiveness of hits targeting weakness with the amount of defense of target
+                weak_def_crit = (target.defending // 3) - 1
+                weak_def_crit = weak_def_crit if weak_def_crit > MIN_WEAKNESS_CRITICAL else MIN_WEAKNESS_CRITICAL
+                target.defending -= weak_def_crit
+                print(f" * Weakness caused target to lose {weak_def_crit} more defense stack(s)")
         if target.strength == suit_lib[card_suit]:
             damage *= 0.75
             print(f" * Target strength reduced damage ({target.strength})")
+
+        if DEFENSE_WEAKNESS_LIM <= target.defending and target.weakness == suit_lib[card_suit]:
+            damage *= 0.66 # 2/3 completely target removing weakness impact
+            print(f" * Nullified target weakness scaling")
+        if DEFENSE_STRENGTH_LIM <= target.defending and attacker.strength == suit_lib[card_suit]:
+            damage *= 0.83 # 5/6 : reducing 1.5x to 1.25x
+            print(f" * Reduced attacker strength scaling")
 
     evaluate_multipliers(attacker, weakness_used, strength_used)
     if damage > 0:

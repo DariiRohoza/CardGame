@@ -18,6 +18,10 @@ STACK_RANK_LIMIT = 7
 SUIT_PENALTY = -3
 IDENTICAL_BOOST = 3
 
-DEFENSE_THRESHOLD = 10
+DEFENSE_WEAKNESS_LIM = 10
+DEFENSE_STRENGTH_LIM = 15
+DEFENSE_THRESHOLD = 20
+
+MIN_WEAKNESS_CRITICAL = 1
 
 # balanced default : hp = 100, actions = 1 || Multiply actions by n and multiply health by n ** 2
