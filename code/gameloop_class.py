@@ -390,7 +390,6 @@ def attack_player(used_card: Card, attacker: Player, target: Player):
             print(f" * Target strength reduced damage ({target.strength})")
 
         if defending_bool and weakness_bool:
-            defending_bool, weakness_bool = False, False
             # weak_def_crit scales effectiveness of hits targeting weakness with the amount of defense of target
             weak_def_crit = (target.defending // 3) - 1
             weak_def_crit = weak_def_crit if MIN_WEAKNESS_CRITICAL < weak_def_crit else MIN_WEAKNESS_CRITICAL
