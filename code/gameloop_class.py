@@ -358,6 +358,9 @@ def evaluate_multipliers(curr_player: Player, weakness_used: bool, strength_used
         curr_player.strength = ""
 
 def attack_player(used_card: Card, attacker: Player, target: Player):
+    defending_bool = False
+    weakness_bool = False
+
     card_style, (card_suit, card_rank) = used_card.style, used_card.card_value
     damage, weakness_used, strength_used = evaluate_card(used_card, attacker, True)
 
@@ -376,19 +379,23 @@ def attack_player(used_card: Card, attacker: Player, target: Player):
             damage *= 0.90 ** target.defending
             print(f" * Nullified 1 target defense stack")
             target.defending -= 1 # defense stacks get removed one by one, but they all impact damage taken
+            defending_bool = True
 
         if target.weakness == suit_lib[card_suit]:
             damage *= 1.50
             print(f" * Target weakness amplified damage ({target.weakness})")
-            if 0 < target.defending:
-                # weak_def_crit scales effectiveness of hits targeting weakness with the amount of defense of target
-                weak_def_crit = (target.defending // 3) - 1
-                weak_def_crit = weak_def_crit if weak_def_crit > MIN_WEAKNESS_CRITICAL else MIN_WEAKNESS_CRITICAL
-                target.defending -= weak_def_crit
-                print(f" * Weakness caused target to lose {weak_def_crit} more defense stack(s)")
+            weakness_bool = True
         if target.strength == suit_lib[card_suit]:
             damage *= 0.75
             print(f" * Target strength reduced damage ({target.strength})")
+
+        if defending_bool and weakness_bool:
+            defending_bool, weakness_bool = False, False
+            # weak_def_crit scales effectiveness of hits targeting weakness with the amount of defense of target
+            weak_def_crit = (target.defending // 3) - 1
+            weak_def_crit = weak_def_crit if MIN_WEAKNESS_CRITICAL < weak_def_crit else MIN_WEAKNESS_CRITICAL
+            target.defending -= weak_def_crit
+            print(f" * Weakness caused target to lose {weak_def_crit} more defense stack(s)")
 
         if DEFENSE_WEAKNESS_LIM <= target.defending and target.weakness == suit_lib[card_suit]:
             damage *= 0.66 # 2/3 completely target removing weakness impact
