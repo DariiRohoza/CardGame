@@ -331,7 +331,6 @@ def game_winner(winner: Player):
     print(f"The player that has eliminated all the other players and won is!\n",
           figlet_format(f"{winner.name}", font="larry3d"))
 
-
 def evaluate_card(used_card: Card, curr_player: Player, stack_apply: bool=False):
     weakness_used = False
     strength_used = False
