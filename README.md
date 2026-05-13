@@ -26,7 +26,7 @@ Assuming you have already been able to launch the game, follow these steps:
 | ACTION_AMOUNT | The amount of actions that can be performed by a player in 1 round. |
 | MIN_GAME_PLAYERS | Minimum amount of players, going below 2 is not advised as you will be forced to attack yourself. |
 | MAX_GAME_PLAYERS | Maximum amount of players. |
-| PLAYER_HAND_SIZE | Amount of cards a player has access to at a given time, should be smaller than \frac{MAX_DECK_SIZE}{MAX_GAME_PLAYERS}. |
+| PLAYER_HAND_SIZE | Amount of cards a player has access to at a given time, should be smaller than MAX_DECK_SIZE / MAX_GAME_PLAYERS. |
 | STACK_RANK_LIMIT | Maximum rank that can be used for the "Stack Attack Value" action. |
 | SUIT_PENALTY | Penalty that is applied to mergers of cards with different suits. |
 | IDENTICAL_BOOST | Bonus added for identical cards during merging. |
