@@ -17,7 +17,7 @@ Assuming you have already been able to launch the game, follow these steps:
 3. Enjoy!
 
 | Variable | Consequence |
-|:-------:|:-------|
+|:-------|:-------|
 | ACTION_MULTIPLIER | Automatically adjusts the game balance to the amount of actions the players have. |
 | MIN_GENERATED_CARD_RANK | Changes the minimum generated rank, going below 1 is not advised |
 | MAX_GENERATED_CARD_RANK | Changes the maximum generated rank |
