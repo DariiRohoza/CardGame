@@ -4,7 +4,7 @@ from deck_class import Deck
 from player_class import Player
 from constants_libraries import (suit_lib, style_lib, MIN_GENERATED_CARD_RANK, MIN_GAME_PLAYERS,
                                  MAX_GAME_PLAYERS, PLAYER_HAND_SIZE, DEFENSE_THRESHOLD,
-                                 DEFENSE_WEAKNESS_LIM, DEFENSE_STRENGTH_LIM, MIN_WEAKNESS_CRITICAL,
+                                 DEFENSE_STRENGTH_LIM, DEFENSE_WEAKNESS_LIM, MIN_WEAKNESS_CRITICAL,
                                  STACK_RANK_LIMIT, SUIT_PENALTY, IDENTICAL_BOOST)
 
 class GameLoop:
@@ -397,10 +397,10 @@ def attack_player(used_card: Card, attacker: Player, target: Player):
             print(f" * Weakness caused target to lose {weak_def_crit} more defense stack(s)")
 
         if DEFENSE_WEAKNESS_LIM <= target.defending and target.weakness == suit_lib[card_suit]:
-            damage *= 0.66 # 2/3 completely target removing weakness impact
+            damage *= 0.66 # 2/3 : completely removing target weakness impact
             print(f" * Nullified target weakness scaling")
         if DEFENSE_STRENGTH_LIM <= target.defending and attacker.strength == suit_lib[card_suit]:
-            damage *= 0.83 # 5/6 : reducing 1.5x to 1.25x
+            damage *= 0.83 # 5/6 : reducing 1.5x to 1.25x attacker strength impact
             print(f" * Reduced attacker strength scaling")
 
     evaluate_multipliers(attacker, weakness_used, strength_used)
