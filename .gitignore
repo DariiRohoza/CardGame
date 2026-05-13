@@ -1,2 +1,5 @@
 .DS_Store
+code/__pycache__/card_class.cpython-314.pyc
+code/__pycache__/constants_libraries.cpython-314.pyc
 code/__pycache__/gameloop_class.cpython-314.pyc
+code/__pycache__/player_class.cpython-314.pyc
