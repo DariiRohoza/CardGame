@@ -13,7 +13,7 @@
 Assuming you have already been able to launch the game, follow these steps:
 
 1. Open the constants_libraries.py file
-2. Using the table below, navigate to the variable you wish to cahnge and modify the value assigned to it
+2. Using the table below, navigate to the variable you wish to change and modify the value assigned to it
 3. Enjoy!
 
 | Variable | Consequence |
