@@ -12,7 +12,7 @@ class Card:
         return f"{self.style} {str(self.card_value[1]) + suit_lib[self.card_value[0]]} card!"
 
     def add_info(self, suit: int, rank: int, style: str):
-        # Validating {Suit} and {Rank}
+        # Validating suit and rank
         if type(suit) is not int or type(rank) is not int:
             raise TypeError(f"Suit ({suit}) or rank {rank}: Invalid type")
         elif suit not in suit_lib.keys() or rank < MIN_GENERATED_CARD_RANK:
@@ -22,7 +22,7 @@ class Card:
         else:
             self.card_value = (suit, rank)
 
-        # Validating {Style}
+        # Validating style
         if type(style) is not str:
             raise TypeError(f"Style {style}: Invalid type")
         elif style not in style_lib:

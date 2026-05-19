@@ -30,7 +30,7 @@ class GameLoop:
                     item.hand.append(self.deck.draw_card())
 
     def add_player(self, new_player: Player):
-        # Checking Conditions
+        # Checking conditions
         if len(self.deck) != 0:
             print(f"Deck has been initialized, can't add more players, skipping...")
         elif len(self.player_list) == MAX_GAME_PLAYERS:
@@ -312,14 +312,14 @@ class GameLoop:
         self.iterate_turn()
 
 # ── Util / Helper Functions ──────────────────────────────
-def print_hand(curr_hand: list[Card] = None):
+def print_hand(curr_hand: list[Card] | None = None):
     if curr_hand is None:
         print(f"Hand is empty")
     else:
         for i in range(len(curr_hand)):
             print(f"{i} : {curr_hand[i]}")
 
-def print_players(player_list: list[Player], curr_player: Player = None):
+def print_players(player_list: list[Player], curr_player: Player | None = None):
     if len(player_list) == 0:
         print(f"Not enough players to print!")
     else:
@@ -332,7 +332,7 @@ def game_winner(winner: Player):
     print(f"The player that has eliminated all the other players and won is!\n",
           figlet_format(f"{winner.name}", font="larry3d"))
 
-def evaluate_card(used_card: Card, curr_player: Player, stack_apply: bool=False):
+def evaluate_card(used_card: Card, curr_player: Player, stack_apply: bool = False):
     weakness_used = False
     strength_used = False
 

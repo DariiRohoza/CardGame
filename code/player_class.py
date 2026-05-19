@@ -10,7 +10,7 @@ class Player:
         self.defending: int = 0
         self.attack_stack: int = 0
 
-        # only values from {suit_lib} and an empty string {""}
+        # only values from suit_lib and an empty string ""
         self.weakness: str = ""
         self.strength: str = ""
 
@@ -20,7 +20,7 @@ class Player:
         return (f"A player at {self.health:,.2f}hp; {self.action_count} speed; {self.defending} defense stacks; "
                 f"hand hidden; --> Weakness: {self.weakness}; Strength: {self.strength}")
 
-    def rename(self, name: str=None):
+    def rename(self, name: str | None = None):
         if name is not None:
             self.name = name
             return name
