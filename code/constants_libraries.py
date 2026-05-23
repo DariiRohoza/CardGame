@@ -1,7 +1,11 @@
-style_lib = {"Failed": 0.01, "Dull": 0.75, "Cool": 1.0, "Bold": 1.25, "Awesome": 1.5,
+STYLE_LIB = {"Failed": 0.01, "Dull": 0.75, "Cool": 1.0, "Bold": 1.25, "Awesome": 1.5,
              "Stylish": 2.0, "Stunningly Stylish": 2.5, "Pristine": 3.0, "Omega": 5.0}
-style_lib_weights = [0.01, 0.13, 0.50, 0.15, 0.10, 0.05, 0.03, 0.02, 0.01]
-suit_lib = {0: "A", 1: "B", 2: "C", 3: "D", 4: "E"}
+STYLE_LIB_WEIGHTS = [0.01, 0.13, 0.50, 0.15, 0.10, 0.05, 0.03, 0.02, 0.01]
+SUIT_LIB = {0: "A", 1: "B", 2: "C", 3: "D", 4: "E"}
+
+CARD_PRINT = [("Index", 11), ("Style", 21), ("Rank Suit", 11)]
+PLAYER_PRINT = [("Index", 11), ("Name", 11), ("Health", 11), ("Speed", 11), ("Defense", 11),
+                ("Attack Stack", 15), ("Weakness", 11), ("Strength", 11), ("Yourself", 11)]
 
 # Set action multiplier to any number change hp and action count accordingly | Default is 1
 ACTION_MULTIPLIER = 1

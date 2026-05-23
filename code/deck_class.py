@@ -1,6 +1,6 @@
 from random import shuffle, randint, choices
 from card_class import Card
-from constants_libraries import (suit_lib, style_lib, style_lib_weights,
+from constants_libraries import (STYLE_LIB, STYLE_LIB_WEIGHTS, SUIT_LIB,
                                  MIN_GENERATED_CARD_RANK, MAX_GENERATED_CARD_RANK, MAX_DECK_SIZE)
 
 class Deck:
@@ -31,8 +31,8 @@ class Deck:
 
 def generate_card() -> Card:
     card = Card()
-    suit_choice = randint(0, len(suit_lib)-1)
+    suit_choice = randint(0, len(SUIT_LIB)-1)
     rank_choice = randint(MIN_GENERATED_CARD_RANK, MAX_GENERATED_CARD_RANK)
-    style_choice = choices(list(style_lib.keys()), weights=style_lib_weights, k=1)[0]
+    style_choice = choices(list(STYLE_LIB.keys()), weights=STYLE_LIB_WEIGHTS, k=1)[0]
     card.add_info(suit_choice, rank_choice, style_choice)
     return card

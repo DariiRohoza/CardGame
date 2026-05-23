@@ -3,10 +3,11 @@ from rich.console import Console
 from rich.table import Table
 
 from pyfiglet import figlet_format
+
 from card_class import Card
 from deck_class import Deck
 from player_class import Player
-from constants_libraries import (style_lib, suit_lib, MIN_GENERATED_CARD_RANK, MIN_GAME_PLAYERS,
+from constants_libraries import (STYLE_LIB, SUIT_LIB, CARD_PRINT, PLAYER_PRINT, MIN_GENERATED_CARD_RANK, MIN_GAME_PLAYERS,
                                  MAX_GAME_PLAYERS, PLAYER_HAND_SIZE, STACK_RANK_LIMIT, SUIT_PENALTY, IDENTICAL_BOOST,
                                  DEFENSE_STRENGTH_LIM, DEFENSE_WEAKNESS_LIM, DEFENSE_THRESHOLD, MIN_WEAKNESS_CRITICAL)
 
@@ -187,7 +188,7 @@ class GameLoop:
         curr_hand.remove(user_card)
 
         print(f"Please select a target suit from the following options by inputting the number in front of it")
-        for key, value in suit_lib.items():
+        for key, value in SUIT_LIB.items():
             if key != user_card.suit:
                 print(f"{key} : {value}")
             else:
@@ -200,7 +201,7 @@ class GameLoop:
             except ValueError:
                 print(f"The input is of invalid type, try again...")
                 continue
-            if user_choice_suit not in suit_lib.keys():
+            if user_choice_suit not in SUIT_LIB.keys():
                 print(f"The input is out of range, try again...")
                 continue
             elif user_choice_suit == user_card.suit:
@@ -208,12 +209,12 @@ class GameLoop:
                 continue
             break
 
-        if curr_player.weakness == suit_lib[user_choice_suit]:
+        if curr_player.weakness == SUIT_LIB[user_choice_suit]:
             curr_player.weakness = ""
             print(f" * Cured player weakness at no cost")
 
-        print(f"\n--> Granted player strength with the chosen suit ({suit_lib[user_choice_suit]})")
-        curr_player.strength = suit_lib[user_choice_suit]
+        print(f"\n--> Granted player strength with the chosen suit ({SUIT_LIB[user_choice_suit]})")
+        curr_player.strength = SUIT_LIB[user_choice_suit]
 
         new_card = Card()
         new_card.add_info(user_choice_suit, user_card.rank, user_card.style)
@@ -230,7 +231,7 @@ class GameLoop:
 
         strength_bonus = MIN_GENERATED_CARD_RANK
 
-        if curr_player.strength == suit_lib[user_card.suit]:
+        if curr_player.strength == SUIT_LIB[user_card.suit]:
             strength_bonus += 5
             curr_player.strength = ""
             print(f" * Nullified player strength for a higher ranked card")
@@ -255,7 +256,7 @@ class GameLoop:
         user_card_2nd = card_choosing(curr_hand)
         curr_hand.remove(user_card_2nd)
 
-        if style_lib[user_card_1st.style] > style_lib[user_card_2nd.style]:
+        if STYLE_LIB[user_card_1st.style] > STYLE_LIB[user_card_2nd.style]:
             merged_style = user_card_1st.style
         else:
             merged_style = user_card_2nd.style
@@ -284,8 +285,8 @@ class GameLoop:
         curr_hand.remove(user_card)
 
         new_style = user_card.style
-        for key, value in style_lib.items():
-            if value > style_lib[new_style]:
+        for key, value in STYLE_LIB.items():
+            if value > STYLE_LIB[new_style]:
                 new_style = key
                 break
 
@@ -321,15 +322,13 @@ def print_hand(curr_player: Player | None = None, curr_hand: list[Card] | None =
         return False
 
     card_table = Table(caption=f"{curr_player.name}'s cards", box=box.ROUNDED)
-    card_table.add_column("Index", min_width=10, justify="center", no_wrap=True)
-    card_table.add_column("Style", min_width=20, justify="center", no_wrap=True)
-    card_table.add_column("Rank Suit", min_width=10, justify="center", no_wrap=True)
-
+    for item in CARD_PRINT:
+        card_table.add_column(item[0], min_width=item[1], justify="center", no_wrap=True)
     for idx, item in enumerate(curr_hand):
-        style, suit_rank = item.style, str(item.rank) + str(suit_lib[item.suit])
+        style, suit_rank = item.style, str(item.rank) + str(SUIT_LIB[item.suit])
         card_table.add_row(str(idx), style, suit_rank)
 
-    console = Console()
+    console = Console(force_terminal=True, color_system="truecolor", width=150)
     console.print(card_table)
     return True
 
@@ -339,25 +338,17 @@ def print_players(player_list: list[Player], curr_player: Player | None = None) 
         return False
 
     player_table = Table(caption=f"The players", box=box.ROUNDED)
-    player_table.add_column("Index", min_width=10, justify="center", no_wrap=True)
-    player_table.add_column("Name", min_width=10, justify="center", no_wrap=True)
-    player_table.add_column("Health", min_width=10, justify="center", no_wrap=True)
-    player_table.add_column("Speed", min_width=10, justify="center", no_wrap=True)
-    player_table.add_column("Defense", min_width=10, justify="center", no_wrap=True)
-    player_table.add_column("Attack Stack", min_width=15, justify="center", no_wrap=True)
-    player_table.add_column("Weakness", min_width=10, justify="center", no_wrap=True)
-    player_table.add_column("Strength", min_width=10, justify="center", no_wrap=True)
-    player_table.add_column("Yourself", min_width=10, justify="left", no_wrap=True)
-
+    for item in PLAYER_PRINT:
+        player_table.add_column(item[0], min_width=item[1], justify="center", no_wrap=True)
     for idx, plr in enumerate(player_list):
         name, health, speed, defense = plr.name, f"{plr.health:,.2f}", str(plr.action_count), str(plr.defending)
         attack_stack, weakness, strength = f"{plr.attack_stack:,.2f}", plr.weakness, plr.strength
         if weakness == "": weakness = "None"
         if strength == "": strength = "None"
-        you = "Yourself" if curr_player == plr else "-N/A-"
+        you = "Yourself" if curr_player == plr else "N/A"
         player_table.add_row(str(idx), name, health, speed, defense, attack_stack, weakness, strength, you)
 
-    console = Console(width=150)
+    console = Console(force_terminal=True, color_system="truecolor", width=150)
     console.print(player_table)
     return True
 
@@ -372,12 +363,12 @@ def evaluate_card(used_card: Card, curr_player: Player, stack_apply: bool = Fals
     card_suit, card_rank, card_style = used_card.suit, used_card.rank, used_card.style
     value = float(card_rank)
     value += curr_player.attack_stack if stack_apply else 0
-    value *= style_lib[card_style]
-    if curr_player.weakness == suit_lib[card_suit]:
+    value *= STYLE_LIB[card_style]
+    if curr_player.weakness == SUIT_LIB[card_suit]:
         value *= 0.75
         print(f" * Used {curr_player.name} weakness ({curr_player.weakness})")
         weakness_used = True
-    if curr_player.strength == suit_lib[card_suit]:
+    if curr_player.strength == SUIT_LIB[card_suit]:
         value *= 1.50
         print(f" * Used {curr_player.name} strength ({curr_player.strength})")
         strength_used = True
@@ -414,11 +405,11 @@ def attack_player(used_card: Card, attacker: Player, target: Player):
             target.defending -= 1 # defense stacks get removed one by one, but they all impact damage taken
             defending_bool = True
 
-        if target.weakness == suit_lib[card_suit]:
+        if target.weakness == SUIT_LIB[card_suit]:
             damage *= 1.50
             print(f" * Target weakness amplified damage ({target.weakness})")
             weakness_bool = True
-        if target.strength == suit_lib[card_suit]:
+        if target.strength == SUIT_LIB[card_suit]:
             damage *= 0.75
             print(f" * Target strength reduced damage ({target.strength})")
 
@@ -429,18 +420,18 @@ def attack_player(used_card: Card, attacker: Player, target: Player):
             target.defending -= weak_def_crit
             print(f" * Weakness caused target to lose {weak_def_crit} more defense stack(s)")
 
-        if DEFENSE_WEAKNESS_LIM <= target.defending and target.weakness == suit_lib[card_suit]:
+        if DEFENSE_WEAKNESS_LIM <= target.defending and target.weakness == SUIT_LIB[card_suit]:
             damage *= 0.66 # 2/3 : completely removing target weakness impact
             print(f" * Nullified target weakness scaling")
-        if DEFENSE_STRENGTH_LIM <= target.defending and attacker.strength == suit_lib[card_suit]:
+        if DEFENSE_STRENGTH_LIM <= target.defending and attacker.strength == SUIT_LIB[card_suit]:
             damage *= 0.83 # 5/6 : reducing 1.5x to 1.25x attacker strength impact
             print(f" * Reduced attacker strength scaling")
 
     evaluate_multipliers(attacker, weakness_used, strength_used)
     if damage > 0:
         target.health -= damage
-        target.weakness = suit_lib[card_suit]
-        target.strength = suit_lib[(card_suit + 2) % len(suit_lib)]
+        target.weakness = SUIT_LIB[card_suit]
+        target.strength = SUIT_LIB[(card_suit + 2) % len(SUIT_LIB)]
         print(f"{target.name}'s health after attacking : {target.health:,.2f}\n"
               f"{target.name} is now weak to {target.weakness} and strong with {target.strength}\n")
     else:
