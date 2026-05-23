@@ -205,8 +205,8 @@ class GameLoop:
             break
 
         if curr_player.weakness == suit_lib[user_choice_suit]:
-            print(f" * Cured player weakness at no cost")
             curr_player.weakness = ""
+            print(f" * Cured player weakness at no cost")
 
         print(f"\n--> Granted player strength with the chosen suit ({suit_lib[user_choice_suit]})")
         curr_player.strength = suit_lib[user_choice_suit]
@@ -228,8 +228,8 @@ class GameLoop:
 
         if curr_player.strength == suit_lib[user_card.suit]:
             strength_bonus += 5
-            print(f" * Nullified player strength for a higher ranked card")
             curr_player.strength = ""
+            print(f" * Nullified player strength for a higher ranked card")
 
         new_card = Card()
         new_card.add_info(user_card.suit, user_card.rank + strength_bonus, user_card.style)
@@ -260,8 +260,10 @@ class GameLoop:
 
         if user_card_1st.suit != user_card_2nd.suit:
             change += SUIT_PENALTY
+            print(f" * Applied suit penalty to the result ({SUIT_PENALTY})")
         elif user_card_2nd.suit == user_card_1st.suit and user_card_2nd.rank == user_card_1st.rank:
             change += IDENTICAL_BOOST
+            print(f" * Applied identicality boost to the result ({IDENTICAL_BOOST})")
 
         merged_card = Card()
         merged_card.add_info(user_card_1st.suit, user_card_1st.rank + user_card_2nd.rank + change, merged_style)
@@ -362,8 +364,8 @@ def attack_player(used_card: Card, attacker: Player, target: Player):
     damage, weakness_used, strength_used = evaluate_card(used_card, attacker, True)
 
     if attacker.attack_stack > 0:
-        print(f" * Used attacker damage stack to amplify damage")
         attacker.attack_stack = 0
+        print(f" * Used attacker damage stack to amplify damage")
 
     if DEFENSE_THRESHOLD <= target.defending:
         damage = 0
