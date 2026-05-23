@@ -2,10 +2,9 @@ from pyfiglet import figlet_format
 from card_class import Card
 from deck_class import Deck
 from player_class import Player
-from constants_libraries import (suit_lib, style_lib, MIN_GENERATED_CARD_RANK, MIN_GAME_PLAYERS,
-                                 MAX_GAME_PLAYERS, PLAYER_HAND_SIZE, DEFENSE_THRESHOLD,
-                                 DEFENSE_STRENGTH_LIM, DEFENSE_WEAKNESS_LIM, MIN_WEAKNESS_CRITICAL,
-                                 STACK_RANK_LIMIT, SUIT_PENALTY, IDENTICAL_BOOST)
+from constants_libraries import (style_lib, suit_lib, MIN_GENERATED_CARD_RANK, MIN_GAME_PLAYERS,
+                                 MAX_GAME_PLAYERS, PLAYER_HAND_SIZE, STACK_RANK_LIMIT, SUIT_PENALTY, IDENTICAL_BOOST,
+                                 DEFENSE_STRENGTH_LIM, DEFENSE_WEAKNESS_LIM, DEFENSE_THRESHOLD, MIN_WEAKNESS_CRITICAL)
 
 class GameLoop:
     def __init__(self):
@@ -155,7 +154,7 @@ class GameLoop:
     def stack_attack_value(self, curr_hand: list[Card], curr_player: Player) -> bool:
         filter_hand = []
         for item in curr_hand:
-            if item.card_value[1] <= STACK_RANK_LIMIT:
+            if item.rank <= STACK_RANK_LIMIT:
                 filter_hand.append(item)
 
         if len(filter_hand) == 0:
@@ -185,7 +184,7 @@ class GameLoop:
 
         print(f"Please select a target suit from the following options by inputting the number in front of it")
         for key, value in suit_lib.items():
-            if key != user_card.card_value[0]:
+            if key != user_card.suit:
                 print(f"{key} : {value}")
             else:
                 print(f"{key} : {value} > CURRENT SUIT")
@@ -200,7 +199,7 @@ class GameLoop:
             if user_choice_suit not in suit_lib.keys():
                 print(f"The input is out of range, try again...")
                 continue
-            if user_choice_suit == user_card.card_value[0]:
+            elif user_choice_suit == user_card.suit:
                 print(f"The target suit has to be different from the starting suit, try again...")
                 continue
             break
@@ -213,7 +212,7 @@ class GameLoop:
         curr_player.strength = suit_lib[user_choice_suit]
 
         new_card = Card()
-        new_card.add_info(user_choice_suit, user_card.card_value[1], user_card.style)
+        new_card.add_info(user_choice_suit, user_card.rank, user_card.style)
 
         print(f"\n--> Changed suit card: {new_card}\n")
         curr_hand.append(new_card)
@@ -227,13 +226,13 @@ class GameLoop:
 
         strength_bonus = MIN_GENERATED_CARD_RANK
 
-        if curr_player.strength == suit_lib[user_card.card_value[0]]:
+        if curr_player.strength == suit_lib[user_card.suit]:
             strength_bonus += 5
             print(f" * Nullified player strength for a higher ranked card")
             curr_player.strength = ""
 
         new_card = Card()
-        new_card.add_info(user_card.card_value[0], user_card.card_value[1] + strength_bonus, user_card.style)
+        new_card.add_info(user_card.suit, user_card.rank + strength_bonus, user_card.style)
 
         print(f"\n--> Increased rank card: {new_card}\n")
         curr_hand.append(new_card)
@@ -259,15 +258,13 @@ class GameLoop:
 
         change = 0
 
-        if user_card_1st.card_value[0] != user_card_2nd.card_value[0]:
+        if user_card_1st.suit != user_card_2nd.suit:
             change += SUIT_PENALTY
-        if user_card_2nd.card_value == user_card_1st.card_value:
+        elif user_card_2nd.suit == user_card_1st.suit and user_card_2nd.rank == user_card_1st.rank:
             change += IDENTICAL_BOOST
 
         merged_card = Card()
-        merged_card.add_info(user_card_1st.card_value[0],
-                             user_card_1st.card_value[1] + user_card_2nd.card_value[1] + change,
-                             merged_style)
+        merged_card.add_info(user_card_1st.suit, user_card_1st.rank + user_card_2nd.rank + change, merged_style)
 
         print(f"\n--> Merged card: {merged_card}\n")
         curr_hand.append(merged_card)
@@ -287,7 +284,7 @@ class GameLoop:
                 break
 
         new_card = Card()
-        new_card.add_info(user_card.card_value[0], user_card.card_value[1], new_style)
+        new_card.add_info(user_card.suit, user_card.rank, new_style)
 
         print(f"\n--> Increased style card: {new_card}\n")
         curr_hand.append(new_card)
@@ -336,7 +333,7 @@ def evaluate_card(used_card: Card, curr_player: Player, stack_apply: bool = Fals
     weakness_used = False
     strength_used = False
 
-    card_style, (card_suit, card_rank) = used_card.style, used_card.card_value
+    card_suit, card_rank, card_style = used_card.suit, used_card.rank, used_card.style
     value = card_rank
     value += curr_player.attack_stack if stack_apply else 0
     value *= style_lib[card_style]
@@ -361,7 +358,7 @@ def attack_player(used_card: Card, attacker: Player, target: Player):
     defending_bool = False
     weakness_bool = False
 
-    card_style, (card_suit, card_rank) = used_card.style, used_card.card_value
+    card_suit, card_rank, card_style = used_card.suit, used_card.rank, used_card.style
     damage, weakness_used, strength_used = evaluate_card(used_card, attacker, True)
 
     if attacker.attack_stack > 0:
