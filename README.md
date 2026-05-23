@@ -35,6 +35,8 @@ Assuming you have already been able to launch the game, follow these steps:
 | DEFENSE_THRESHOLD | The threshold past which damage is completely absobed but defense is removed at a faster pace. |
 | MIN_WEAKNESS_CRITICAL | Minimum additional defense stacks removed from the target if the attacking card has the same suit as the target's weakness. |
 
+Do not change the variables above the ACTION_MULTIPLIER unless you know what you're doing, it is key those stay the way they are.
+
 ## Future Plans
 
 **FEATURE** : Add file saving, having a default file with a relative / absolute path so that games are saved to those files
