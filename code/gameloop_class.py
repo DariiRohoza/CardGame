@@ -1,3 +1,7 @@
+from rich import box
+from rich.console import Console
+from rich.table import Table
+
 from pyfiglet import figlet_format
 from card_class import Card
 from deck_class import Deck
@@ -74,14 +78,14 @@ class GameLoop:
             match user_choice_option:
                 case 0: self.conclude_game = True
                 case 1: self.attack_turn(curr_player, curr_hand)
-                case 11: self.stack_attack_value(curr_hand, curr_player)
+                case 11: self.stack_attack_value(curr_player, curr_hand)
                 case 2: print_players(self.player_list, curr_player)
-                case 3: print_hand(curr_hand)
-                case 4: self.refurbish_card_suit(curr_hand, curr_player)
-                case 5: self.increase_card_rank(curr_hand, curr_player)
-                case 6: self.merge_card_rank(curr_hand)
-                case 7: self.stylize_card(curr_hand)
-                case 8: self.drop_half_cards(curr_hand)
+                case 3: print_hand(curr_player, curr_hand)
+                case 4: self.refurbish_card_suit(curr_player, curr_hand)
+                case 5: self.increase_card_rank(curr_player, curr_hand)
+                case 6: self.merge_card_rank(curr_player, curr_hand)
+                case 7: self.stylize_card(curr_player, curr_hand)
+                case 8: self.drop_half_cards(curr_player, curr_hand)
                 case 9: self.defend(curr_player, 2)
 
                 case _:
@@ -106,7 +110,7 @@ class GameLoop:
 
         print(f">>> It is now {curr_player.name}'s attack turn")
         print(f"Pick a card from your hand by inputting the number in front of it")
-        print_hand(curr_hand)
+        print_hand(curr_player, curr_hand)
         user_chosen_card = card_choosing(curr_hand)
 
         print(f"Please select a player to attack from the following options by inputting the number in front of them")
@@ -151,7 +155,7 @@ class GameLoop:
 
         self.iterate_turn()
 
-    def stack_attack_value(self, curr_hand: list[Card], curr_player: Player) -> bool:
+    def stack_attack_value(self, curr_player: Player, curr_hand: list[Card]) -> bool:
         filter_hand = []
         for item in curr_hand:
             if item.rank <= STACK_RANK_LIMIT:
@@ -163,7 +167,7 @@ class GameLoop:
             return False
 
         print(f"Choose a card from the eligible below to stack their attack value by inputting the number in front of it")
-        print_hand(filter_hand)
+        print_hand(curr_player, filter_hand)
         chosen_card = card_choosing(filter_hand)
         curr_hand.remove(chosen_card)
         value, weakness_used, strength_used = evaluate_card(chosen_card, curr_player)
@@ -176,9 +180,9 @@ class GameLoop:
         self.iterate_turn()
         return True
 
-    def refurbish_card_suit(self, curr_hand: list[Card], curr_player: Player):
+    def refurbish_card_suit(self, curr_player: Player, curr_hand: list[Card]):
         print(f"Pick a card to be refurbished from your hand by inputting the number in front of it")
-        print_hand(curr_hand)
+        print_hand(curr_player, curr_hand)
         user_card = card_choosing(curr_hand)
         curr_hand.remove(user_card)
 
@@ -218,9 +222,9 @@ class GameLoop:
         curr_hand.append(new_card)
         self.iterate_turn()
 
-    def increase_card_rank(self, curr_hand: list[Card], curr_player: Player):
+    def increase_card_rank(self, curr_player: Player, curr_hand: list[Card]):
         print(f"Pick a card to increase rank of from your hand by inputting the number in front of it")
-        print_hand(curr_hand)
+        print_hand(curr_player, curr_hand)
         user_card = card_choosing(curr_hand)
         curr_hand.remove(user_card)
 
@@ -238,16 +242,16 @@ class GameLoop:
         curr_hand.append(new_card)
         self.defend(curr_player, 1) # also handles the iterate_turn()
 
-    def merge_card_rank(self, curr_hand: list[Card]):
+    def merge_card_rank(self, curr_player: Player, curr_hand: list[Card]):
         print(f"The first card you pick is going to be the target while the second is the one going to be merged\n"
               f"--> If the 2 cards selected have different suits, the result will have a penalty of 3 subtracted\n\n"
               f"Pick a target card from your hand by inputting the number in front of it")
-        print_hand(curr_hand)
+        print_hand(curr_player, curr_hand)
         user_card_1st = card_choosing(curr_hand)
         curr_hand.remove(user_card_1st)
 
         print(f"Pick the card that is to be merged to your first pick by inputting the number in front of it")
-        print_hand(curr_hand)
+        print_hand(curr_player, curr_hand)
         user_card_2nd = card_choosing(curr_hand)
         curr_hand.remove(user_card_2nd)
 
@@ -273,9 +277,9 @@ class GameLoop:
         curr_hand.append(self.deck.draw_card())
         self.iterate_turn()
 
-    def stylize_card(self, curr_hand: list[Card]):
+    def stylize_card(self, curr_player: Player, curr_hand: list[Card]):
         print(f"Pick a card to increase style of from your hand by inputting the number in front of it")
-        print_hand(curr_hand)
+        print_hand(curr_player, curr_hand)
         user_card = card_choosing(curr_hand)
         curr_hand.remove(user_card)
 
@@ -297,11 +301,11 @@ class GameLoop:
         print(f"{curr_player.name} has gained {def_stacks} stack(s) of defense\n")
         self.iterate_turn()
 
-    def drop_half_cards(self, curr_hand: list[Card]):
+    def drop_half_cards(self, curr_player: Player, curr_hand: list[Card]):
         cards_removed = len(curr_hand) // 2
         for i in range(cards_removed):
             print(f"Choose a card to remove ({i}/{cards_removed} removed already)")
-            print_hand(curr_hand)
+            print_hand(curr_player, curr_hand)
             user_card = card_choosing(curr_hand)
             curr_hand.remove(user_card)
 
@@ -311,21 +315,51 @@ class GameLoop:
         self.iterate_turn()
 
 # ── Util / Helper Functions ──────────────────────────────
-def print_hand(curr_hand: list[Card] | None = None):
-    if curr_hand is None:
-        print(f"Hand is empty")
-    else:
-        for i in range(len(curr_hand)):
-            print(f"{i} : {curr_hand[i]}")
+def print_hand(curr_player: Player | None = None, curr_hand: list[Card] | None = None) -> bool:
+    if curr_player is None or curr_hand is None:
+        print(f"No player provided or hand is empty")
+        return False
 
-def print_players(player_list: list[Player], curr_player: Player | None = None):
+    card_table = Table(caption=f"{curr_player.name}'s cards", box=box.ROUNDED)
+    card_table.add_column("Index", min_width=10, justify="center", no_wrap=True)
+    card_table.add_column("Style", min_width=20, justify="center", no_wrap=True)
+    card_table.add_column("Rank Suit", min_width=10, justify="center", no_wrap=True)
+
+    for idx, item in enumerate(curr_hand):
+        style, suit_rank = item.style, str(item.rank) + str(suit_lib[item.suit])
+        card_table.add_row(str(idx), style, suit_rank)
+
+    console = Console()
+    console.print(card_table)
+    return True
+
+def print_players(player_list: list[Player], curr_player: Player | None = None) -> bool:
     if len(player_list) == 0:
         print(f"Not enough players to print!")
-    else:
-        for i in range(len(player_list)):
-            print(f"{i} : {player_list[i]}")
-            if player_list[i] == curr_player:
-                print(f" ^ Yourself!")
+        return False
+
+    player_table = Table(caption=f"The players", box=box.ROUNDED)
+    player_table.add_column("Index", min_width=10, justify="center", no_wrap=True)
+    player_table.add_column("Name", min_width=10, justify="center", no_wrap=True)
+    player_table.add_column("Health", min_width=10, justify="center", no_wrap=True)
+    player_table.add_column("Speed", min_width=10, justify="center", no_wrap=True)
+    player_table.add_column("Defense", min_width=10, justify="center", no_wrap=True)
+    player_table.add_column("Attack Stack", min_width=15, justify="center", no_wrap=True)
+    player_table.add_column("Weakness", min_width=10, justify="center", no_wrap=True)
+    player_table.add_column("Strength", min_width=10, justify="center", no_wrap=True)
+    player_table.add_column("Yourself", min_width=10, justify="left", no_wrap=True)
+
+    for idx, plr in enumerate(player_list):
+        name, health, speed, defense = plr.name, f"{plr.health:,.2f}", str(plr.action_count), str(plr.defending)
+        attack_stack, weakness, strength = f"{plr.attack_stack:,.2f}", plr.weakness, plr.strength
+        if weakness == "": weakness = "None"
+        if strength == "": strength = "None"
+        you = "Yourself" if curr_player == plr else "-N/A-"
+        player_table.add_row(str(idx), name, health, speed, defense, attack_stack, weakness, strength, you)
+
+    console = Console(width=150)
+    console.print(player_table)
+    return True
 
 def game_winner(winner: Player):
     print(f"The player that has eliminated all the other players and won is!\n",
@@ -336,7 +370,7 @@ def evaluate_card(used_card: Card, curr_player: Player, stack_apply: bool = Fals
     strength_used = False
 
     card_suit, card_rank, card_style = used_card.suit, used_card.rank, used_card.style
-    value = card_rank
+    value = float(card_rank)
     value += curr_player.attack_stack if stack_apply else 0
     value *= style_lib[card_style]
     if curr_player.weakness == suit_lib[card_suit]:

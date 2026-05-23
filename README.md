@@ -3,8 +3,8 @@
 ## Launching the game
 
 1. Open the folder in an IDE like Visual Studio Code or Pycharm
-2. (If needed) Install at minimum python 3.12
-3. (If needed) Install the pyfiglet module
+2. (If needed) Install at minimum python 3.14
+3. (If needed) Install the pyfiglet module and/or the rich module
 4. Open and launch the main.py file
 5. Enjoy!
 

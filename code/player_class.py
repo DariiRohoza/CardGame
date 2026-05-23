@@ -8,7 +8,7 @@ class Player:
         self.health: float = START_PLAYER_HEALTH
         self.action_count: int = ACTION_AMOUNT
         self.defending: int = 0
-        self.attack_stack: int = 0
+        self.attack_stack: float = 0
 
         # only values from suit_lib and an empty string ""
         self.weakness: str = ""
