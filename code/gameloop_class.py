@@ -7,8 +7,9 @@ from pyfiglet import figlet_format
 from card_class import Card
 from deck_class import Deck
 from player_class import Player
-from constants_libraries import (STYLE_LIB, SUIT_LIB, CARD_PRINT, PLAYER_PRINT, MIN_GENERATED_CARD_RANK, MIN_GAME_PLAYERS,
-                                 MAX_GAME_PLAYERS, PLAYER_HAND_SIZE, STACK_RANK_LIMIT, SUIT_PENALTY, IDENTICAL_BOOST,
+from constants_libraries import (STYLE_LIB, SUIT_LIB, MOVEMENT_LIB, CARD_PRINT, PLAYER_PRINT, MOVEMENT_PRINT,
+                                 MIN_GENERATED_CARD_RANK, MIN_GAME_PLAYERS, MAX_GAME_PLAYERS, PLAYER_HAND_SIZE,
+                                 STACK_RANK_LIMIT, SUIT_PENALTY, IDENTICAL_BOOST,
                                  DEFENSE_STRENGTH_LIM, DEFENSE_WEAKNESS_LIM, DEFENSE_THRESHOLD, MIN_WEAKNESS_CRITICAL)
 
 class GameLoop:
@@ -46,7 +47,6 @@ class GameLoop:
 
     def main_loop(self):
         while not self.conclude_game:
-            user_choice_option = 0
             if len(self.deck) == 0:
                 self.deck.fill()
                 self.deck.shuffle()
@@ -56,7 +56,6 @@ class GameLoop:
 
             print(f">>> It is now {curr_player.name}'s turn\n\n"
                   f"Pick an options from those below by inputting the number in front of it\n"
-                  f"00 : Conclude Game / Quit\n"
                   f"01 : Attack Player\n"
                   f"11 : Stack Attack Value\n"
                   f"02 : View Other Players\n"
@@ -66,29 +65,27 @@ class GameLoop:
                   f"06 : Merge Card Rank\n"
                   f"07 : Stylize Card\n"
                   f"08 : Exchange half of your hand\n"
-                  f"09 : Defend\n")
+                  f"09 : Defend\n"
+                  f"10 : Move\n"
+                  f"quit : Conclude Game / Quit\n")
 
-            while True:
-                try:
-                    user_choice_option = int(input(f"Input your choice: "))
-                except ValueError:
-                    print(f"The input is of invalid value, try again...")
-                    continue
-                break
+            user_choice_option = input(f"Input your choice: ").strip().lstrip("0")
 
             match user_choice_option:
-                case 0: self.conclude_game = True
-                case 1: self.attack_turn(curr_player, curr_hand)
-                case 11: self.stack_attack_value(curr_player, curr_hand)
-                case 2: print_players(self.player_list, curr_player)
-                case 3: print_hand(curr_player, curr_hand)
-                case 4: self.refurbish_card_suit(curr_player, curr_hand)
-                case 5: self.increase_card_rank(curr_player, curr_hand)
-                case 6: self.merge_card_rank(curr_player, curr_hand)
-                case 7: self.stylize_card(curr_player, curr_hand)
-                case 8: self.drop_half_cards(curr_player, curr_hand)
-                case 9: self.defend(curr_player, 2)
+                case "1": self.attack_turn(curr_player, curr_hand)
+                case "11": self.stack_attack_value(curr_player, curr_hand)
+                case "2": print_players(self.player_list, curr_player)
+                case "3": print_hand(curr_player, curr_hand)
+                case "4": self.refurbish_card_suit(curr_player, curr_hand)
+                case "5": self.increase_card_rank(curr_player, curr_hand)
+                case "6": self.merge_card_rank(curr_player, curr_hand)
+                case "7": self.stylize_card(curr_player, curr_hand)
+                case "8": self.drop_half_cards(curr_player, curr_hand)
+                case "9": self.defend(curr_player, 2)
+                case "10": self.move_player(curr_player)
 
+                case "quit" | "QUIT":
+                    self.conclude_game = True
                 case _:
                     print(f"Invalid input, try again...\n")
 
@@ -297,11 +294,6 @@ class GameLoop:
         curr_hand.append(new_card)
         self.iterate_turn()
 
-    def defend(self, curr_player, def_stacks: int):
-        curr_player.defending += def_stacks
-        print(f"{curr_player.name} has gained {def_stacks} stack(s) of defense\n")
-        self.iterate_turn()
-
     def drop_half_cards(self, curr_player: Player, curr_hand: list[Card]):
         cards_removed = len(curr_hand) // 2
         for i in range(cards_removed):
@@ -315,7 +307,36 @@ class GameLoop:
         print(f"{cards_removed} new cards have been added to your hand\n")
         self.iterate_turn()
 
-# ── Util / Helper Functions ──────────────────────────────
+    def defend(self, curr_player, def_stacks: int):
+        curr_player.defending += def_stacks
+        print(f"{curr_player.name} has gained {def_stacks} stack(s) of defense\n")
+        self.iterate_turn()
+
+    def move_player(self, curr_player):
+        print_movement_table()
+
+        # movement_list = self.input_move_player()
+        # self.analyze_evaluate_move(curr_player)
+
+        # TODO : Implement player movement, taking movement in, processing the result vector and movement tech, etc
+            # SUPER :
+                # 0.80x damage reduction on the next attack
+            # HYPER :
+                # +5 to the rank of a random card in your hand &&
+                # gain strength with the suit of that card
+            # ULTRA :
+                # 1.5x speed effectiveness of the next move ||
+                # 1.5x damage on next attack (Whichever is done first)
+            # FALL-BOOST :
+                # Ignores {1 + 2 * YOUR_SPEED // OPPONENT_SPEED} defense stacks &&
+                #+2 defense stacks removed by next attack
+            # B-HOP :
+                # 1/2 chance to dodge next attack &&
+                # velocity decay * 0.1 instead of full size
+
+        self.iterate_turn()
+
+# ── Table Printing Functions ──────────────────────────────
 def print_hand(curr_player: Player | None = None, curr_hand: list[Card] | None = None) -> bool:
     if curr_player is None or curr_hand is None:
         print(f"No player provided or hand is empty")
@@ -341,17 +362,39 @@ def print_players(player_list: list[Player], curr_player: Player | None = None) 
     for item in PLAYER_PRINT:
         player_table.add_column(item[0], min_width=item[1], justify="center", no_wrap=True)
     for idx, plr in enumerate(player_list):
-        name, health, speed, defense = plr.name, f"{plr.health:,.2f}", str(plr.action_count), str(plr.defending)
-        attack_stack, weakness, strength = f"{plr.attack_stack:,.2f}", plr.weakness, plr.strength
+        name, health, actions, speed = plr.name, f"{plr.health:,.2f}", str(plr.action_count), str(plr.speed)
+        move_tech, defense, attack_stack = plr.move_tech, str(plr.defending), f"{plr.attack_stack:,.2f}"
+        weakness, strength = plr.weakness, plr.strength
+        if move_tech == "": move_tech = "None"
         if weakness == "": weakness = "None"
         if strength == "": strength = "None"
-        you = "Yourself" if curr_player == plr else "N/A"
-        player_table.add_row(str(idx), name, health, speed, defense, attack_stack, weakness, strength, you)
+        you = "You" if curr_player == plr else "N/A"
+        player_table.add_row(str(idx), name, health, actions, speed, move_tech, defense, attack_stack, weakness, strength, you)
 
     console = Console(force_terminal=True, color_system="truecolor", width=150)
     console.print(player_table)
     return True
 
+def print_movement_table():
+    move_table = Table(caption=f"Moves", box=box.ROUNDED)
+    for item in MOVEMENT_PRINT:
+        move_table.add_column(item[0], min_width=item[1], justify="center", no_wrap=True)
+    idx = 0
+    for key, val in MOVEMENT_LIB.items():
+        if type(val[1]) is str:
+            move_possibility = val[1]
+        else:
+            move_possibility = ""
+            for item in val[1]:
+                move_possibility += item
+                move_possibility += " OR " if item is not val[1][-1] else ""
+        move_table.add_row(str(idx), f"{key}", f"{val[0]}", f"{move_possibility}")
+        idx += 1
+
+    console = Console(force_terminal=True, color_system="truecolor", width=150)
+    console.print(move_table)
+
+# ── Util / Helper Functions ──────────────────────────────
 def game_winner(winner: Player):
     print(f"The player that has eliminated all the other players and won is!\n",
           figlet_format(f"{winner.name}", font="larry3d"))

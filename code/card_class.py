@@ -13,7 +13,7 @@ class Card:
         return f"{self.style} {self.rank}{SUIT_LIB[self.suit]} card!"
 
     def add_info(self, suit: int, rank: int, style: str):
-        # Validating suit and rank
+        # validating suit and rank
         if type(suit) is not int or type(rank) is not int or type(style) is not str:
             raise TypeError(f"Suit ({suit}) or rank {rank} or style {style}: Invalid type")
         elif suit not in SUIT_LIB.keys() or rank < MIN_GENERATED_CARD_RANK or style not in STYLE_LIB:

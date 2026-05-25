@@ -1,5 +1,5 @@
 from card_class import Card
-from constants_libraries import START_PLAYER_HEALTH, ACTION_AMOUNT
+from constants_libraries import START_PLAYER_HEALTH, ACTION_AMOUNT, INITIAL_SPEED
 
 class Player:
     def __init__(self):
@@ -7,6 +7,8 @@ class Player:
         self.hand: list[Card] = []
         self.health: float = START_PLAYER_HEALTH
         self.action_count: int = ACTION_AMOUNT
+        self.speed = INITIAL_SPEED # 2d vector, format : (vertical, horizontal)
+        self.move_tech = ""
         self.defending: int = 0
         self.attack_stack: float = 0
 
