@@ -36,13 +36,3 @@ Assuming you have already been able to launch the game, follow these steps:
 | MIN_WEAKNESS_CRITICAL | Minimum additional defense stacks removed from the target if the attacking card has the same suit as the target's weakness. |
 
 Do not change the variables above the ACTION_MULTIPLIER unless you know what you're doing, it is key those stay the way they are.
-
-## Future Plans
-
-**FEATURE** : Add file saving, having a default file with a relative / absolute path so that games are saved to those files
-
-**FEATURE** : player move choice, changing a move choice is an ACTION, all are started with "stationary"
-1. _B-hop_ : removes an additional defense stack from the enemy if your strength matches the card you used
-2. _Hyper_ : 1/3 chance to increase the rank of a random card by 3 every action
-3. _Super_ : constant x0.80 damage reduction
-4. _Ultra_ : 5/8 chance to crit (x1.5 dmg) on attacks
