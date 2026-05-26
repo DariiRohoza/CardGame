@@ -6,11 +6,13 @@ class Player:
         self.name: str = "PLACEHOLDER"
         self.hand: list[Card] = []
         self.health: float = START_PLAYER_HEALTH
-        self.action_count: int = ACTION_AMOUNT
-        self.speed = INITIAL_SPEED # 2d vector, format : (vertical, horizontal)
-        self.move_tech = ""
+
         self.defending: int = 0
         self.attack_stack: float = 0
+
+        self.action_count: int = ACTION_AMOUNT
+        self.speed = INITIAL_SPEED  # 2d vector, format : (vertical, horizontal)
+        self.move_tech = "" # format : "tech : modifier, modifier"
 
         # only values from SUIT_LIB or an empty string ""
         self.weakness: str = ""
@@ -24,6 +26,9 @@ class Player:
 
     def speed_value(self) -> int:
         return (self.speed[0] ** 2 + self.speed[1] ** 2) ** 1/2
+
+    def multiply_velocity(self, modifier):
+        self.speed = (self.speed[0] * modifier, self.speed[1] * modifier)
 
     def rename(self, name: str | None = None):
         if name is not None:

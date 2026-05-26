@@ -7,9 +7,11 @@ from pyfiglet import figlet_format
 from card_class import Card
 from deck_class import Deck
 from player_class import Player
-from constants_libraries import (STYLE_LIB, SUIT_LIB, MOVEMENT_LIB, CARD_PRINT, PLAYER_PRINT, MOVEMENT_PRINT,
+from constants_libraries import (STYLE_LIB, SUIT_LIB, MOVEMENT_LIB, MOVEMENT_TECH_LIB,
+                                 CARD_PRINT, PLAYER_PRINT, MOVEMENT_PRINT,
                                  MIN_GENERATED_CARD_RANK, MIN_GAME_PLAYERS, MAX_GAME_PLAYERS, PLAYER_HAND_SIZE,
-                                 STACK_RANK_LIMIT, SUIT_PENALTY, IDENTICAL_BOOST, MIN_MOVE, VELOCITY_DECAY,
+                                 STACK_RANK_LIMIT, SUIT_PENALTY, IDENTICAL_BOOST,
+                                 MIN_MOVE, VELOCITY_DECAY,
                                  DEFENSE_STRENGTH_LIM, DEFENSE_WEAKNESS_LIM, DEFENSE_THRESHOLD, MIN_WEAKNESS_CRITICAL)
 
 class GameLoop:
@@ -315,9 +317,10 @@ class GameLoop:
     def move_player(self, curr_player):
         print_movement_table()
         move_list = []
-        max_moves = MIN_MOVE + (curr_player.speed_value() // 50)
-        print(f"Input a movement sequence from the \"Move\" column in the table above.\n"
-              f"Separate each input with a \",\" and with a maximum of {max_moves} choices.")
+        velocity_modifier = 1
+        max_moves = int(MIN_MOVE + curr_player.speed_value() // 50)
+        print(f"Input a movement sequence from the \"Move\" column in the table above\n"
+              f"Separate each input with a \",\" with a maximum of {max_moves} choices")
 
         while True:
             move_seq = input("Input: ").upper()
@@ -334,6 +337,7 @@ class GameLoop:
                     continue
             break
 
+        print(move_list)
         evaluate_move_list(move_list, curr_player)
 
         # TODO : Implement player movement, taking movement in, processing the result vector and movement tech, etc
@@ -357,6 +361,8 @@ class GameLoop:
                 # 1/2 chance to dodge next attack &&
                 # velocity decay * 0.1 instead of full size
 
+        curr_player.multiply_velocity(VELOCITY_DECAY * velocity_modifier)
+        print(f"{curr_player.name}'s vector and speeed are now : {curr_player.speed} | {curr_player.speed_value()}")
         self.iterate_turn()
 
 # ── Table Printing Functions ──────────────────────────────
@@ -385,14 +391,18 @@ def print_players(player_list: list[Player], curr_player: Player | None = None) 
     for item in PLAYER_PRINT:
         player_table.add_column(item[0], min_width=item[1], justify="center", no_wrap=True)
     for idx, plr in enumerate(player_list):
-        name, health, actions, speed = plr.name, f"{plr.health:,.2f}", str(plr.action_count), str(plr.speed)
-        move_tech, defense, attack_stack = plr.move_tech, str(plr.defending), f"{plr.attack_stack:,.2f}"
+        name, health = plr.name, f"{plr.health:,.2f}"
+        defense, attack_stack = str(plr.defending), f"{plr.attack_stack:,.2f}"
+        actions, speed, move_tech = str(plr.action_count), str(plr.speed), plr.move_tech
         weakness, strength = plr.weakness, plr.strength
+
         if move_tech == "": move_tech = "None"
         if weakness == "": weakness = "None"
         if strength == "": strength = "None"
         you = "You" if curr_player == plr else "N/A"
-        player_table.add_row(str(idx), name, health, actions, speed, move_tech, defense, attack_stack, weakness, strength, you)
+
+        player_table.add_row(str(idx), name, health, defense, attack_stack,
+                             actions, speed, move_tech, weakness, strength, you)
 
     console = Console(force_terminal=True, color_system="truecolor", width=150)
     console.print(player_table)
@@ -504,7 +514,18 @@ def attack_player(used_card: Card, attacker: Player, target: Player):
         print(f"{target.name}'s was unaffected by the attack\n")
 
 def evaluate_move_list(movement: list, player: Player):
-    pass
+    curr_tech = player.move_tech
+    movement_chunks = []
+
+    # splitting into chunks
+    i = 0
+    while i < len(movement):
+        pass
+        i += 1
+    # processing each individual movement chunk
+    for chunk in movement_chunks:
+        pass
+        # if 2 or more identical sequences add the CHAIN modifier to tech
 
 def card_choosing(curr_hand: list[Card]) -> Card:
     user_chosen_card = curr_hand[0]
