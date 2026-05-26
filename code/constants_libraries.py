@@ -15,14 +15,14 @@ MOVEMENT_LIB = {
     "DASH-UP-LEFT": ((20, -30), "FALL-BOOST"),
     "DASH-UP-RIGHT": ((20, 30), "FALL-BOOST"),
 
-    "DASH-DOWN-NONE": ((-40, 0), "FALL-BOOST"),
+    "DASH-DOWN-NONE": ((-40, 0), "BOUNCE-BOOST"),
     "DASH-UP-NONE": ((40, 0), "FALL-BOOST"),
 
-    "JUMP": ((60, 0), ("FALL-BOOST", "B-HOP")),
+    "JUMP": ((60, 0), "B-HOP"),
     "STALL": ((0, 0), "NONE")
 }
 # TECH : SUPER, HYPER, ULTRA, B-HOP, FALL-BOOST, BOUNCE-BOOST
-# MODIFIERS : EXTENDED, SLIDE, HIGH-JUMP, SLOW-FALL, FAST-FALL
+# MODIFIERS : EXTENDED, SLIDE, HIGH-JUMP, SLOW-FALL, FAST-FALL, CHAIN (repeated use)
 MOVEMENT_TECH_LIB = {
     ("DASH-NONE-LEFT", "JUMP"): "SUPER",
     ("DASH-NONE-RIGHT", "JUMP"): "SUPER",
@@ -41,12 +41,11 @@ MOVEMENT_TECH_LIB = {
     ("DASH-DOWN-LEFT", "STALL", "STALL", "JUMP"): "ULTRA",
     ("DASH-DOWN-RIGHT", "STALL", "STALL", "JUMP"): "ULTRA",
 
-    ("DASH-NONE-LEFT", "JUMP", "JUMP"): "B-HOP",
-    ("DASH-NONE-RIGHT", "JUMP", "JUMP"): "B-HOP",
-    ("DASH-DOWN-LEFT", "JUMP", "JUMP"): "B-HOP : EXTENDED",
-    ("DASH-DOWN-RIGHT", "JUMP", "JUMP"): "B-HOP",
-    ("DASH-UP-LEFT", "JUMP", "JUMP"): "B-HOP : HIGH-JUMP | EXTENDED",
-    ("DASH-UP-RIGHT", "JUMP", "JUMP"): "B-HOP : HIGH-JUMP | EXTENDED",
+    ("JUMP", "STALL", "JUMP"): "B-HOP",
+    ("JUMP", "STALL", "DASH-NONE-LEFT", "JUMP"): "B-HOP : EXTENDED",
+    ("JUMP", "STALL", "DASH-NONE-RIGHT", "JUMP"): "B-HOP : EXTENDED",
+    ("JUMP", "STALL", "DASH-DOWN-LEFT", "JUMP"): "B-HOP : HIGH-JUMP",
+    ("JUMP", "STALL", "DASH-DOWN-RIGHT", "JUMP"): "B-HOP : HIGH-JUMP",
 
     ("DASH-UP-LEFT", "STALL"): "FALL-BOOST",
     ("DASH-UP-RIGHT", "STALL"): "FALL-BOOST",
@@ -72,7 +71,7 @@ PLAYER_PRINT = [("Index", 7), ("Name", 9), ("Health", 11), ("Defense", 9), ("Att
 MOVEMENT_PRINT = [("Index", 7), ("Move", 21), ("Vector", 15), ("Movement Tech", 21)]
 
 # set action multiplier to any number change hp and action count accordingly | default is 1
-ACTION_MULTIPLIER = 10
+ACTION_MULTIPLIER = 1
 
 # card variables
 MIN_GENERATED_CARD_RANK = 1

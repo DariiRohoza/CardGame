@@ -323,6 +323,7 @@ class GameLoop:
               f"Separate each input with a \",\" with a maximum of {max_moves} choices")
 
         while True:
+            valid_entry = True
             move_seq = input("Input: ").upper()
             if len(move_seq) <= 0:
                 print("Invalid length of input, try again...")
@@ -334,7 +335,9 @@ class GameLoop:
             for item in move_list:
                 if item not in MOVEMENT_LIB.keys():
                     print(f"Problematic item: {item}, Invalid structure, example: STALL,DASH-DOWN-LEFT,JUMP,...")
-                    continue
+                    valid_entry = False
+            if not valid_entry:
+                continue
             break
 
         print(move_list)
@@ -520,12 +523,26 @@ def evaluate_move_list(movement: list, player: Player):
     # splitting into chunks
     i = 0
     while i < len(movement):
+        matched = False
+        for length in range(min(4, len(movement) - i), 0, - 1):
+            part = tuple(movement[i:i + length])
+            if part in MOVEMENT_TECH_LIB.keys():
+                print("window", part, MOVEMENT_TECH_LIB[part])
+                movement_chunks.append(part)
+                i += length
+                matched = True
+                break
+        if not matched:
+            movement_chunks.append(movement[i])
+            i += 1
+
+    # if 2 or more identical sequences add the CHAIN modifier to tech and keep 1 of them
+    for chunk in movement_chunks:
         pass
-        i += 1
+
     # processing each individual movement chunk
     for chunk in movement_chunks:
         pass
-        # if 2 or more identical sequences add the CHAIN modifier to tech
 
 def card_choosing(curr_hand: list[Card]) -> Card:
     user_chosen_card = curr_hand[0]
