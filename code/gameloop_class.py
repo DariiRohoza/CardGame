@@ -9,7 +9,7 @@ from deck_class import Deck
 from player_class import Player
 from constants_libraries import (STYLE_LIB, SUIT_LIB, MOVEMENT_LIB, CARD_PRINT, PLAYER_PRINT, MOVEMENT_PRINT,
                                  MIN_GENERATED_CARD_RANK, MIN_GAME_PLAYERS, MAX_GAME_PLAYERS, PLAYER_HAND_SIZE,
-                                 STACK_RANK_LIMIT, SUIT_PENALTY, IDENTICAL_BOOST,
+                                 STACK_RANK_LIMIT, SUIT_PENALTY, IDENTICAL_BOOST, MIN_MOVE, VELOCITY_DECAY,
                                  DEFENSE_STRENGTH_LIM, DEFENSE_WEAKNESS_LIM, DEFENSE_THRESHOLD, MIN_WEAKNESS_CRITICAL)
 
 class GameLoop:
@@ -258,17 +258,17 @@ class GameLoop:
         else:
             merged_style = user_card_2nd.style
 
-        change = 0
+        rank_change = 0
 
         if user_card_1st.suit != user_card_2nd.suit:
-            change += SUIT_PENALTY
+            rank_change += SUIT_PENALTY
             print(f" * Applied suit penalty to the result ({SUIT_PENALTY})")
         elif user_card_2nd.suit == user_card_1st.suit and user_card_2nd.rank == user_card_1st.rank:
-            change += IDENTICAL_BOOST
+            rank_change += IDENTICAL_BOOST
             print(f" * Applied identicality boost to the result ({IDENTICAL_BOOST})")
 
         merged_card = Card()
-        merged_card.add_info(user_card_1st.suit, user_card_1st.rank + user_card_2nd.rank + change, merged_style)
+        merged_card.add_info(user_card_1st.suit, user_card_1st.rank + user_card_2nd.rank + rank_change, merged_style)
 
         print(f"\n--> Merged card: {merged_card}\n")
         curr_hand.append(merged_card)
@@ -314,11 +314,34 @@ class GameLoop:
 
     def move_player(self, curr_player):
         print_movement_table()
+        move_list = []
+        max_moves = MIN_MOVE + (curr_player.speed_value() // 50)
+        print(f"Input a movement sequence from the \"Move\" column in the table above.\n"
+              f"Separate each input with a \",\" and with a maximum of {max_moves} choices.")
 
-        # movement_list = self.input_move_player()
-        # self.analyze_evaluate_move(curr_player)
+        while True:
+            move_seq = input("Input: ").upper()
+            if len(move_seq) <= 0:
+                print("Invalid length of input, try again...")
+                continue
+            move_list = move_seq.split(",")
+            if not 0 < len(move_list) <= max_moves:
+                print(f"Invalid selection length, keep amount of actions under {max_moves}, try again...")
+                continue
+            for item in move_list:
+                if item not in MOVEMENT_LIB.keys():
+                    print(f"Problematic item: {item}, Invalid structure, example: STALL,DASH-DOWN-LEFT,JUMP,...")
+                    continue
+            break
+
+        evaluate_move_list(move_list, curr_player)
 
         # TODO : Implement player movement, taking movement in, processing the result vector and movement tech, etc
+
+        # add hidden tech variants depending on if certain conditions are satisfied
+        # adding text modifiers to the end of the tech to make it visible
+        # if a player already has a tech, make it impact their next tech, allowing for stronger synergies
+
             # SUPER :
                 # 0.80x damage reduction on the next attack
             # HYPER :
@@ -479,6 +502,9 @@ def attack_player(used_card: Card, attacker: Player, target: Player):
               f"{target.name} is now weak to {target.weakness} and strong with {target.strength}\n")
     else:
         print(f"{target.name}'s was unaffected by the attack\n")
+
+def evaluate_move_list(movement: list, player: Player):
+    pass
 
 def card_choosing(curr_hand: list[Card]) -> Card:
     user_chosen_card = curr_hand[0]

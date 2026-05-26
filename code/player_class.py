@@ -22,6 +22,9 @@ class Player:
         return (f"A player at {self.health:,.2f}hp; {self.action_count} speed; {self.defending} defense stacks; "
                 f"Weakness: {self.weakness}; Strength: {self.strength}")
 
+    def speed_value(self) -> int:
+        return (self.speed[0] ** 2 + self.speed[1] ** 2) ** 1/2
+
     def rename(self, name: str | None = None):
         if name is not None:
             self.name = name
