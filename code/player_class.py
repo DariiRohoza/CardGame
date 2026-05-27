@@ -24,11 +24,21 @@ class Player:
         return (f"A player at {self.health:,.2f}hp; {self.action_count} speed; {self.defending} defense stacks; "
                 f"Weakness: {self.weakness}; Strength: {self.strength}")
 
-    def speed_value(self) -> int:
-        return (self.speed[0] ** 2 + self.speed[1] ** 2) ** 1/2
+    def print_speed(self):
+        return f"({self.speed[0]:,.2f}, {self.speed[1]:,.2f})"
 
-    def multiply_velocity(self, modifier):
-        self.speed = (self.speed[0] * modifier, self.speed[1] * modifier)
+    def speed_value(self) -> int:
+        return ((self.speed[0] ** 2) + (self.speed[1] ** 2)) ** (1/2)
+
+    def add_velocity(self, modifier: tuple[float | int, float | int]):
+        speed_y = self.speed[0] + modifier[0]
+        speed_x = self.speed[1] + modifier[1]
+        self.speed = (speed_y, speed_x)
+
+    def multiply_velocity(self, modifier: float | int):
+        speed_y = self.speed[0] * modifier
+        speed_x = self.speed[1] * modifier
+        self.speed = (speed_y, speed_x)
 
     def rename(self, name: str | None = None):
         if name is not None:

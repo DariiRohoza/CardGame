@@ -365,7 +365,7 @@ class GameLoop:
                 # velocity decay * 0.1 instead of full size
 
         curr_player.multiply_velocity(VELOCITY_DECAY * velocity_modifier)
-        print(f"{curr_player.name}'s vector and speeed are now : {curr_player.speed} | {curr_player.speed_value()}")
+        print(f"{curr_player.name}'s vector and speed are now : {curr_player.print_speed()} | {curr_player.speed_value():,.2f} m/s")
         self.iterate_turn()
 
 # ── Table Printing Functions ──────────────────────────────
@@ -520,29 +520,29 @@ def evaluate_move_list(movement: list, player: Player):
     curr_tech = player.move_tech
     movement_chunks = []
 
-    # splitting into chunks
     i = 0
     while i < len(movement):
         matched = False
         for length in range(min(4, len(movement) - i), 0, - 1):
-            part = tuple(movement[i:i + length])
+            part = tuple(movement[i : i + length])
             if part in MOVEMENT_TECH_LIB.keys():
-                print("window", part, MOVEMENT_TECH_LIB[part])
                 movement_chunks.append(part)
                 i += length
                 matched = True
                 break
         if not matched:
-            movement_chunks.append(movement[i])
+            movement_chunks.append(tuple(movement[i : i + 1]))
             i += 1
 
-    # if 2 or more identical sequences add the CHAIN modifier to tech and keep 1 of them
     for chunk in movement_chunks:
-        pass
+        length = len(chunk)
+        chunk_tech = MOVEMENT_TECH_LIB[chunk] if chunk in MOVEMENT_TECH_LIB.keys() else None
+        for move in chunk:
+            move_vector = MOVEMENT_LIB[move][0]
+            player.add_velocity(move_vector)
 
-    # processing each individual movement chunk
-    for chunk in movement_chunks:
-        pass
+    # if 2 identical techs performed or curr_tech is identical to new tech, add CHAIN modifier to player tech
+    # for tech that is not last, execute passive, keep the last and can be used as active
 
 def card_choosing(curr_hand: list[Card]) -> Card:
     user_chosen_card = curr_hand[0]
