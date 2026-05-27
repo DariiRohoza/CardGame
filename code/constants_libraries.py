@@ -6,19 +6,19 @@ STYLE_LIB_WEIGHTS = [0.01, 0.13, 0.50, 0.15, 0.10, 0.05, 0.03, 0.02, 0.01]
 SUIT_LIB = {0: "A", 1: "B", 2: "C", 3: "D", 4: "E"}
 
 MOVEMENT_LIB = {
-    "DASH-NONE-LEFT": ((0, -50), "SUPER"),
-    "DASH-NONE-RIGHT": ((0, 50), "SUPER"),
+    "DASH-NONE-LEFT": ((-50, 0), "SUPER"),
+    "DASH-NONE-RIGHT": ((50, 0), "SUPER"),
 
-    "DASH-DOWN-LEFT": ((-20, -30), ("HYPER", "ULTRA")),
-    "DASH-DOWN-RIGHT": ((-20, 30), ("HYPER", "ULTRA")),
+    "DASH-DOWN-LEFT": ((-30, -20), ("HYPER", "ULTRA")),
+    "DASH-DOWN-RIGHT": ((30, -20), ("HYPER", "ULTRA")),
 
-    "DASH-UP-LEFT": ((20, -30), "FALL-BOOST"),
-    "DASH-UP-RIGHT": ((20, 30), "FALL-BOOST"),
+    "DASH-UP-LEFT": ((-30, 20), "FALL-BOOST"),
+    "DASH-UP-RIGHT": ((30, 20), "FALL-BOOST"),
 
-    "DASH-DOWN-NONE": ((-50, 0), "BOUNCE-BOOST"),
-    "DASH-UP-NONE": ((50, 0), "FALL-BOOST"),
+    "DASH-DOWN-NONE": ((0, -50), "BOUNCE-BOOST"),
+    "DASH-UP-NONE": ((0, 50), "FALL-BOOST"),
 
-    "JUMP": ((60, 0), "B-HOP"),
+    "JUMP": ((0, 60), "B-HOP"),
     "STALL": ((0, 0), "NONE")
 }
 # TECH : SUPER, HYPER, ULTRA, B-HOP, FALL-BOOST, BOUNCE-BOOST

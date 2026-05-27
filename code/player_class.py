@@ -11,7 +11,7 @@ class Player:
         self.attack_stack: float = 0
 
         self.action_count: int = ACTION_AMOUNT
-        self.speed = INITIAL_SPEED  # 2d vector, format : (vertical, horizontal)
+        self.speed = INITIAL_SPEED  # 2d vector, format : (horizontal, vertical)
         self.move_tech = "" # format : "tech : modifier, modifier"
 
         # only values from SUIT_LIB or an empty string ""
@@ -31,14 +31,14 @@ class Player:
         return ((self.speed[0] ** 2) + (self.speed[1] ** 2)) ** (1/2)
 
     def add_velocity(self, modifier: tuple[float | int, float | int]):
-        speed_y = self.speed[0] + modifier[0]
-        speed_x = self.speed[1] + modifier[1]
-        self.speed = (speed_y, speed_x)
+        speed_x = self.speed[0] + modifier[0]
+        speed_y = self.speed[1] + modifier[1]
+        self.speed = (speed_x, speed_y)
 
     def multiply_velocity(self, modifier: float | int):
-        speed_y = self.speed[0] * modifier
-        speed_x = self.speed[1] * modifier
-        self.speed = (speed_y, speed_x)
+        speed_x = self.speed[0] * modifier
+        speed_y = self.speed[1] * modifier
+        self.speed = (speed_x, speed_y)
 
     def rename(self, name: str | None = None):
         if name is not None:
