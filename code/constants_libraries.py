@@ -23,6 +23,7 @@ MOVEMENT_LIB = {
 }
 # TECH : SUPER, HYPER, ULTRA, B-HOP, FALL-BOOST, BOUNCE-BOOST
 # MODIFIERS : EXTENDED, SLIDE, HIGH-JUMP, SLOW-FALL, FAST-FALL, CHAIN (repeated use)
+    # value will be changed to have {name, passive_bool, active_bool} with the booleans used for in-code processes (effect of tech)
 MOVEMENT_TECH_LIB = {
     ("DASH-NONE-LEFT", "JUMP"): "SUPER",
     ("DASH-NONE-RIGHT", "JUMP"): "SUPER",
@@ -63,12 +64,13 @@ MOVEMENT_TECH_LIB = {
 }
 
 # table printing
-CARD_PRINT = [("Index", 7), ("Style", 21), ("Rank Suit", 11)]
-PLAYER_PRINT = [("Index", 7), ("Name", 9), ("Health", 11), ("Defense", 9), ("Attack Stack", 15),
-                ("Actions", 9), ("Speed", 13), ("Move Tech", 13), ("Weakness", 11), ("Strength", 11), ("You?", 7)]
-MOVEMENT_PRINT = [("Index", 7), ("Move", 21), ("Vector", 15), ("Movement Tech", 21)]
+MAX_MOVE_TECH_LEN = 27
+CARD_PRINT = [("Index", 7), ("Style", 20), ("Rank Suit", 11)]
+PLAYER_PRINT = [("Index", 7), ("Name", 9), ("Health", 8), ("Defense", 9), ("Atk. Stack", 12),
+                ("Actions", 9), ("Speed", 14), ("Move Tech", MAX_MOVE_TECH_LEN), ("Weakness", 10), ("Strength", 10), ("You?", 6)]
+MOVEMENT_PRINT = [("Index", 7), ("Move", 18), ("Vector", 12), ("Movement Tech", 17)]
 
-# set action multiplier to any number change hp and action count accordingly | default is 1
+# set action multiplier to a number > 0 to change hp and action count accordingly | default is 1, recommended is 2
 ACTION_MULTIPLIER = 1
 
 # card variables

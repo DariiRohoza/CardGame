@@ -8,7 +8,7 @@ from card_class import Card
 from deck_class import Deck
 from player_class import Player
 from constants_libraries import (STYLE_LIB, SUIT_LIB, MOVEMENT_LIB, MOVEMENT_TECH_LIB,
-                                 CARD_PRINT, PLAYER_PRINT, MOVEMENT_PRINT,
+                                 MAX_MOVE_TECH_LEN, CARD_PRINT, PLAYER_PRINT, MOVEMENT_PRINT,
                                  MIN_GENERATED_CARD_RANK, MIN_GAME_PLAYERS, MAX_GAME_PLAYERS, PLAYER_HAND_SIZE,
                                  STACK_RANK_LIMIT, SUIT_PENALTY, IDENTICAL_BOOST,
                                  MIN_MOVE, VELOCITY_DECAY_X, VELOCITY_DECAY_Y,
@@ -340,29 +340,18 @@ class GameLoop:
                 continue
             break
 
-        print(move_list)
+        prev_vector = curr_player.print_speed()
+        prev_speed = curr_player.speed_value()
+
         movement_chunks = chunk_split_movement(move_list)
         evaluate_movement_chunks(movement_chunks, curr_player)
 
         # TODO : Implement player movement, taking movement in, processing the result vector and movement tech, etc
 
-            # SUPER :
-                # 0.80x damage reduction on the next attack
-            # HYPER :
-                # +5 to the rank of a random card in your hand &&
-                # gain strength with the suit of that card
-            # ULTRA :
-                # 1.5x speed effectiveness of the next move ||
-                # 1.5x damage on next attack (Whichever is done first)
-            # FALL-BOOST :
-                # Ignores {1 + 2 * YOUR_SPEED // OPPONENT_SPEED} defense stacks &&
-                #+2 defense stacks removed by next attack
-            # B-HOP :
-                # 1/2 chance to dodge next attack &&
-                # velocity decay * 0.1 instead of full size
-
         curr_player.multiply_velocity(VELOCITY_DECAY_X * velocity_modifier, VELOCITY_DECAY_Y * velocity_modifier)
-        print(f"{curr_player.name}'s vector and speed are now : {curr_player.print_speed()} | {curr_player.speed_value():,.2f} m/s")
+        print(f"{curr_player.name}'s speed change:\n"
+              f" >> {prev_vector} --> {curr_player.print_speed()}\n"
+              f" >> {prev_speed:,.2f} m/s --> {curr_player.speed_value():,.2f} m/s\n")
         self.iterate_turn()
 
 # ── Table Printing Functions ──────────────────────────────
@@ -388,8 +377,17 @@ def print_players(player_list: list[Player], curr_player: Player | None = None) 
         return False
 
     player_table = Table(caption=f"The players", box=box.ROUNDED)
+    move_tech_len = max(len(plr.move_tech) for plr in player_list) + 2
+    cut_movement_tech = False
     for item in PLAYER_PRINT:
+        if item[0] != "Move Tech":
+            player_table.add_column(item[0], min_width=item[1], justify="center", no_wrap=True)
+            continue
+        if move_tech_len <= MAX_MOVE_TECH_LEN:
+            player_table.add_column(item[0], min_width=move_tech_len, justify="center", no_wrap=True)
+            continue
         player_table.add_column(item[0], min_width=item[1], justify="center", no_wrap=True)
+        cut_movement_tech = True
     for idx, plr in enumerate(player_list):
         name, health = plr.name, f"{plr.health:,.2f}"
         defense, attack_stack = str(plr.defending), f"{plr.attack_stack:,.2f}"
@@ -399,12 +397,14 @@ def print_players(player_list: list[Player], curr_player: Player | None = None) 
         if move_tech == "": move_tech = "None"
         if weakness == "": weakness = "None"
         if strength == "": strength = "None"
+        if cut_movement_tech and len(move_tech) > MAX_MOVE_TECH_LEN:
+            move_tech = move_tech[:MAX_MOVE_TECH_LEN - 3] + "..."
         you = "You" if curr_player == plr else "N/A"
 
         player_table.add_row(str(idx), name, health, defense, attack_stack,
                              actions, speed, move_tech, weakness, strength, you)
 
-    console = Console(force_terminal=True, color_system="truecolor", width=150)
+    console = Console(force_terminal=True, color_system="truecolor", width=200)
     console.print(player_table)
     return True
 
@@ -530,16 +530,17 @@ def chunk_split_movement(movement: list) -> list[tuple]:
 def evaluate_movement_chunks(movement_chunks: list[tuple], player: Player):
     tech_list = []
     for chunk in movement_chunks:
-        chunk_tech = MOVEMENT_TECH_LIB[chunk] if chunk in MOVEMENT_TECH_LIB.keys() else None
+        if chunk in MOVEMENT_TECH_LIB.keys():
+            tech_list.append(MOVEMENT_TECH_LIB[chunk])
         for move in chunk:
             move_vector = MOVEMENT_LIB[move][0]
             player.add_velocity(move_vector)
-        if chunk_tech is not None:
-            tech_list.append(chunk_tech)
 
     curr_tech = player.move_tech
         # if 2 identical techs performed or curr_tech is identical to new tech, add CHAIN modifier to player tech
         # for tech that is not last, execute passive, keep the last and can be used as active or passive depending on actions
+
+# DASH-DOWN-NONE,STALL,DASH-UP-RIGHT,JUMP,DASH-DOWN-NONE,STALL,DASH-UP-RIGHT,JUMP,DASH-DOWN-RIGHT,STALL,STALL,STALL,JUMP,STALL,JUMP,DASH-NONE-LEFT,JUMP,JUMP,STALL,DASH-DOWN-RIGHT
 
 # ── Util / Helper Functions ──────────────────────────────
 def game_winner(winner: Player):
