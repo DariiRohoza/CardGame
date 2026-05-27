@@ -11,8 +11,8 @@ class Player:
         self.attack_stack: float = 0
 
         self.action_count: int = ACTION_AMOUNT
-        self.speed: tuple[float, float] = INITIAL_SPEED  # 2d vector, format : (horizontal, vertical)
-        self.move_tech: str = "" # format : "tech : modifier, modifier"
+        self.speed: tuple[float, float] = INITIAL_SPEED
+        self.move_tech: str = ""
 
         # only values from SUIT_LIB or an empty string ""
         self.weakness: str = ""
