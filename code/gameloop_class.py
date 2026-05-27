@@ -11,7 +11,7 @@ from constants_libraries import (STYLE_LIB, SUIT_LIB, MOVEMENT_LIB, MOVEMENT_TEC
                                  CARD_PRINT, PLAYER_PRINT, MOVEMENT_PRINT,
                                  MIN_GENERATED_CARD_RANK, MIN_GAME_PLAYERS, MAX_GAME_PLAYERS, PLAYER_HAND_SIZE,
                                  STACK_RANK_LIMIT, SUIT_PENALTY, IDENTICAL_BOOST,
-                                 MIN_MOVE, VELOCITY_DECAY,
+                                 MIN_MOVE, VELOCITY_DECAY_X, VELOCITY_DECAY_Y,
                                  DEFENSE_STRENGTH_LIM, DEFENSE_WEAKNESS_LIM, DEFENSE_THRESHOLD, MIN_WEAKNESS_CRITICAL)
 
 class GameLoop:
@@ -341,13 +341,10 @@ class GameLoop:
             break
 
         print(move_list)
-        evaluate_move_list(move_list, curr_player)
+        movement_chunks = chunk_split_movement(move_list)
+        evaluate_movement_chunks(movement_chunks, curr_player)
 
         # TODO : Implement player movement, taking movement in, processing the result vector and movement tech, etc
-
-        # add hidden tech variants depending on if certain conditions are satisfied
-        # adding text modifiers to the end of the tech to make it visible
-        # if a player already has a tech, make it impact their next tech, allowing for stronger synergies
 
             # SUPER :
                 # 0.80x damage reduction on the next attack
@@ -364,7 +361,7 @@ class GameLoop:
                 # 1/2 chance to dodge next attack &&
                 # velocity decay * 0.1 instead of full size
 
-        curr_player.multiply_velocity(VELOCITY_DECAY * velocity_modifier)
+        curr_player.multiply_velocity(VELOCITY_DECAY_X * velocity_modifier, VELOCITY_DECAY_Y * velocity_modifier)
         print(f"{curr_player.name}'s vector and speed are now : {curr_player.print_speed()} | {curr_player.speed_value():,.2f} m/s")
         self.iterate_turn()
 
@@ -430,11 +427,7 @@ def print_movement_table():
     console = Console(force_terminal=True, color_system="truecolor", width=150)
     console.print(move_table)
 
-# ── Util / Helper Functions ──────────────────────────────
-def game_winner(winner: Player):
-    print(f"The player that has eliminated all the other players and won is!\n",
-          figlet_format(f"{winner.name}", font="larry3d"))
-
+# ── Attacking Functions ──────────────────────────────
 def evaluate_card(used_card: Card, curr_player: Player, stack_apply: bool = False):
     weakness_used = False
     strength_used = False
@@ -516,33 +509,42 @@ def attack_player(used_card: Card, attacker: Player, target: Player):
     else:
         print(f"{target.name}'s was unaffected by the attack\n")
 
-def evaluate_move_list(movement: list, player: Player):
-    curr_tech = player.move_tech
+# ── Movement Functions ──────────────────────────────
+def chunk_split_movement(movement: list) -> list[tuple]:
     movement_chunks = []
-
     i = 0
     while i < len(movement):
         matched = False
         for length in range(min(4, len(movement) - i), 0, - 1):
-            part = tuple(movement[i : i + length])
+            part = tuple(movement[i: i + length])
             if part in MOVEMENT_TECH_LIB.keys():
                 movement_chunks.append(part)
                 i += length
                 matched = True
                 break
         if not matched:
-            movement_chunks.append(tuple(movement[i : i + 1]))
+            movement_chunks.append(tuple(movement[i: i + 1]))
             i += 1
+    return movement_chunks
 
+def evaluate_movement_chunks(movement_chunks: list[tuple], player: Player):
+    tech_list = []
     for chunk in movement_chunks:
-        length = len(chunk)
         chunk_tech = MOVEMENT_TECH_LIB[chunk] if chunk in MOVEMENT_TECH_LIB.keys() else None
         for move in chunk:
             move_vector = MOVEMENT_LIB[move][0]
             player.add_velocity(move_vector)
+        if chunk_tech is not None:
+            tech_list.append(chunk_tech)
 
-    # if 2 identical techs performed or curr_tech is identical to new tech, add CHAIN modifier to player tech
-    # for tech that is not last, execute passive, keep the last and can be used as active
+    curr_tech = player.move_tech
+        # if 2 identical techs performed or curr_tech is identical to new tech, add CHAIN modifier to player tech
+        # for tech that is not last, execute passive, keep the last and can be used as active or passive depending on actions
+
+# ── Util / Helper Functions ──────────────────────────────
+def game_winner(winner: Player):
+    print(f"The player that has eliminated all the other players and won is!\n",
+          figlet_format(f"{winner.name}", font="larry3d"))
 
 def card_choosing(curr_hand: list[Card]) -> Card:
     user_chosen_card = curr_hand[0]

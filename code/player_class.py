@@ -35,9 +35,9 @@ class Player:
         speed_y = self.speed[1] + modifier[1]
         self.speed = (speed_x, speed_y)
 
-    def multiply_velocity(self, modifier: float | int):
-        speed_x = self.speed[0] * modifier
-        speed_y = self.speed[1] * modifier
+    def multiply_velocity(self, modifier_x: float | int, modifier_y: float | int):
+        speed_x = self.speed[0] * modifier_x
+        speed_y = self.speed[1] * modifier_y
         self.speed = (speed_x, speed_y)
 
     def rename(self, name: str | None = None):
