@@ -3,6 +3,7 @@ from constants_libraries import START_PLAYER_HEALTH, ACTION_AMOUNT, INITIAL_SPEE
 
 class Player:
     def __init__(self):
+        # hand | passive_tech : are not shown
         self.name: str = "PLACEHOLDER"
         self.hand: list[Card] = []
         self.health: float = START_PLAYER_HEALTH
@@ -12,7 +13,8 @@ class Player:
 
         self.action_count: int = ACTION_AMOUNT
         self.speed: tuple[float, float] = INITIAL_SPEED
-        self.move_tech: str = ""
+        self.active_tech: str = ""
+        self.passive_tech: dict[str, str] = {} # tech: modifiers
 
         # only values from SUIT_LIB or an empty string ""
         self.weakness: str = ""
@@ -24,21 +26,13 @@ class Player:
         return (f"A player at {self.health:,.2f}hp; {self.action_count} speed; {self.defending} defense stacks; "
                 f"Weakness: {self.weakness}; Strength: {self.strength}")
 
-    def print_speed(self):
-        return f"({self.speed[0]:,.2f} m/s, {self.speed[1]:,.2f} m/s)"
+    def print_speed(self, units: bool = False):
+        if units:
+            return f"({self.speed[0]:,.2f} m/s, {self.speed[1]:,.2f} m/s)"
+        return f"({self.speed[0]:,.2f}, {self.speed[1]:,.2f})"
 
     def speed_value(self) -> int:
         return ((self.speed[0] ** 2) + (self.speed[1] ** 2)) ** (1/2)
-
-    def add_velocity(self, modifier: tuple[float | int, float | int]):
-        speed_x = self.speed[0] + modifier[0]
-        speed_y = self.speed[1] + modifier[1]
-        self.speed = (speed_x, speed_y)
-
-    def multiply_velocity(self, modifier_x: float | int, modifier_y: float | int):
-        speed_x = self.speed[0] * modifier_x
-        speed_y = self.speed[1] * modifier_y
-        self.speed = (speed_x, speed_y)
 
     def rename(self, name: str | None = None):
         if name is not None:

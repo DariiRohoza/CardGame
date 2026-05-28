@@ -8,10 +8,10 @@ from card_class import Card
 from deck_class import Deck
 from player_class import Player
 from constants_libraries import (STYLE_LIB, SUIT_LIB, MOVEMENT_LIB, MOVEMENT_TECH_LIB,
-                                 MAX_MOVE_TECH_LEN, CARD_PRINT, PLAYER_PRINT, MOVEMENT_PRINT,
+                                 MAX_ACTIVE_TECH_LEN, CARD_PRINT, PLAYER_PRINT, MOVEMENT_PRINT,
                                  MIN_GENERATED_CARD_RANK, MIN_GAME_PLAYERS, MAX_GAME_PLAYERS, PLAYER_HAND_SIZE,
                                  STACK_RANK_LIMIT, SUIT_PENALTY, IDENTICAL_BOOST,
-                                 MIN_MOVE, VELOCITY_DECAY_X, VELOCITY_DECAY_Y,
+                                 MIN_MOVE, SPEED_IMPACT, VELOCITY_DECAY_X, VELOCITY_DECAY_Y,
                                  DEFENSE_STRENGTH_LIM, DEFENSE_WEAKNESS_LIM, DEFENSE_THRESHOLD, MIN_WEAKNESS_CRITICAL)
 
 class GameLoop:
@@ -105,6 +105,7 @@ class GameLoop:
         return curr_player, curr_hand
 
     # ── MainLoop SubFunctions ──────────────────────────────
+    # TODO : Implement speed having an effect on actions as well as passive and active tech influence
     def attack_turn(self, curr_player: Player, curr_hand: list[Card]):
         user_chosen_target = None
 
@@ -318,7 +319,7 @@ class GameLoop:
         print_movement_table()
         move_list = []
         velocity_modifier = 1
-        max_moves = int(MIN_MOVE + curr_player.speed_value() // 50)
+        max_moves = int(MIN_MOVE + curr_player.speed_value() // SPEED_IMPACT)
         print(f"Input a movement sequence from the \"Move\" column in the table above\n"
               f"Separate each input with a \",\" with a maximum of {max_moves} choices")
 
@@ -340,17 +341,18 @@ class GameLoop:
                 continue
             break
 
-        prev_vector = curr_player.print_speed()
+        prev_vector = curr_player.print_speed(True)
         prev_speed = curr_player.speed_value()
 
         movement_chunks = chunk_split_movement(move_list)
-        evaluate_movement_chunks(movement_chunks, curr_player)
+        tech_list = evaluate_movement_chunks(movement_chunks, curr_player)
+        if len(tech_list) > 0:
+            evaluate_tech_list(tech_list, curr_player)
 
-        # TODO : Implement player movement, taking movement in, processing the result vector and movement tech, etc
-
-        curr_player.multiply_velocity(VELOCITY_DECAY_X * velocity_modifier, VELOCITY_DECAY_Y * velocity_modifier)
+        velocity_multiplier = (VELOCITY_DECAY_X * velocity_modifier, VELOCITY_DECAY_Y * velocity_modifier)
+        curr_player.speed = multiply_velocity(curr_player.speed, velocity_multiplier)
         print(f"{curr_player.name}'s speed change:\n"
-              f" >> {prev_vector} --> {curr_player.print_speed()}\n"
+              f" >> {prev_vector} --> {curr_player.print_speed(True)}\n"
               f" >> {prev_speed:,.2f} m/s --> {curr_player.speed_value():,.2f} m/s\n")
         self.iterate_turn()
 
@@ -377,32 +379,32 @@ def print_players(player_list: list[Player], curr_player: Player | None = None) 
         return False
 
     player_table = Table(caption=f"The players", box=box.ROUNDED)
-    move_tech_len = max(len(plr.move_tech) for plr in player_list) + 2
+    active_tech_len = max(len(plr.active_tech) for plr in player_list) + 2
     cut_movement_tech = False
     for item in PLAYER_PRINT:
         if item[0] != "Move Tech":
             player_table.add_column(item[0], min_width=item[1], justify="center", no_wrap=True)
             continue
-        if move_tech_len <= MAX_MOVE_TECH_LEN:
-            player_table.add_column(item[0], min_width=move_tech_len, justify="center", no_wrap=True)
+        if active_tech_len <= MAX_ACTIVE_TECH_LEN:
+            player_table.add_column(item[0], min_width=active_tech_len, justify="center", no_wrap=True)
             continue
         player_table.add_column(item[0], min_width=item[1], justify="center", no_wrap=True)
         cut_movement_tech = True
     for idx, plr in enumerate(player_list):
         name, health = plr.name, f"{plr.health:,.2f}"
         defense, attack_stack = str(plr.defending), f"{plr.attack_stack:,.2f}"
-        actions, speed, move_tech = str(plr.action_count), str(plr.speed), plr.move_tech
+        actions, vector, active_tech = str(plr.action_count), plr.print_speed(), plr.active_tech
         weakness, strength = plr.weakness, plr.strength
 
-        if move_tech == "": move_tech = "None"
+        if active_tech == "": active_tech = "None"
         if weakness == "": weakness = "None"
         if strength == "": strength = "None"
-        if cut_movement_tech and len(move_tech) > MAX_MOVE_TECH_LEN:
-            move_tech = move_tech[:MAX_MOVE_TECH_LEN - 3] + "..."
+        if cut_movement_tech and len(active_tech) > MAX_ACTIVE_TECH_LEN:
+            active_tech = active_tech[:MAX_ACTIVE_TECH_LEN - 3] + "..."
         you = "You" if curr_player == plr else "N/A"
 
         player_table.add_row(str(idx), name, health, defense, attack_stack,
-                             actions, speed, move_tech, weakness, strength, you)
+                             actions, vector, active_tech, weakness, strength, you)
 
     console = Console(force_terminal=True, color_system="truecolor", width=200)
     console.print(player_table)
@@ -428,6 +430,7 @@ def print_movement_table():
     console.print(move_table)
 
 # ── Attacking Functions ──────────────────────────────
+# TODO : Implement speed having an effect on damage as well as passive and active tech influence
 def evaluate_card(used_card: Card, curr_player: Player, stack_apply: bool = False):
     weakness_used = False
     strength_used = False
@@ -527,20 +530,73 @@ def chunk_split_movement(movement: list) -> list[tuple]:
             i += 1
     return movement_chunks
 
-def evaluate_movement_chunks(movement_chunks: list[tuple], player: Player):
+def evaluate_movement_chunks(movement_chunks: list[tuple], player: Player) -> list:
     tech_list = []
     for chunk in movement_chunks:
         if chunk in MOVEMENT_TECH_LIB.keys():
             tech_list.append(MOVEMENT_TECH_LIB[chunk])
         for move in chunk:
             move_vector = MOVEMENT_LIB[move][0]
-            player.add_velocity(move_vector)
 
-    curr_tech = player.move_tech
-        # if 2 identical techs performed or curr_tech is identical to new tech, add CHAIN modifier to player tech
-        # for tech that is not last, execute passive, keep the last and can be used as active or passive depending on actions
+            mv_dir_x, mv_dir_y = get_vector_direction(move_vector)
+            plr_dir_x, plr_dir_y = get_vector_direction(player.speed)
+            dif_dir_x = mv_dir_x + plr_dir_x
+            dif_dir_y = mv_dir_y + plr_dir_y
 
-# DASH-DOWN-NONE,STALL,DASH-UP-RIGHT,JUMP,DASH-DOWN-NONE,STALL,DASH-UP-RIGHT,JUMP,DASH-DOWN-RIGHT,STALL,STALL,STALL,JUMP,STALL,JUMP,DASH-NONE-LEFT,JUMP,JUMP,STALL,DASH-DOWN-RIGHT
+            if dif_dir_x == 0:
+                move_vector = multiply_velocity(move_vector, (1.5, 1.0))
+            if dif_dir_y == 0:
+                move_vector = multiply_velocity(move_vector, (1.0, 1.5))
+            if dif_dir_x == dif_dir_y == 0:
+                move_vector = multiply_velocity(move_vector, (1.25, 1.25))
+
+            player.speed = add_velocity(player.speed, move_vector)
+    return tech_list
+
+def evaluate_tech_list(tech_list: list[str], player: Player):
+    for i in range(len(tech_list) - 1):
+        if tech_list[i] == player.active_tech:
+            player.active_tech += " | CHAIN"
+            continue
+
+        active_tech = player.active_tech
+        player.active_tech = tech_list[i]
+        if active_tech == "":
+            continue
+        if ":" not in active_tech:
+            player.passive_tech.update({active_tech: "NONE"})
+            print(f" <*> Added {active_tech} to {player.name}'s passive tech.")
+            continue
+        curr_tech_main, curr_tech_modifiers = active_tech.split(" : ")
+        if curr_tech_main not in player.passive_tech.keys():
+            player.passive_tech.update({curr_tech_main: curr_tech_modifiers})
+            print(f" <*> Added {curr_tech_main} to {player.name}'s passive tech.")
+            continue
+        player.passive_tech[curr_tech_main] += " | CHAIN"
+
+    if tech_list[-1] == player.active_tech:
+        player.active_tech += " | CHAIN"
+    else:
+        player.active_tech = tech_list[-1]
+
+# ── Vector Functions ──────────────────────────────
+def get_vector_direction(vector): # returns a pair of values, can only be 0, 1 or -1
+    vector_x, vector_y = vector
+    dir_x = (vector_x > 0) - (vector_x < 0)
+    dir_y = (vector_y > 0) - (vector_y < 0)
+    return dir_x, dir_y
+
+def add_velocity(vector1: tuple, vector2: tuple):
+    speed_x = vector1[0] + vector2[0]
+    speed_y = vector1[1] + vector2[1]
+    vector1 = (speed_x, speed_y)
+    return vector1
+
+def multiply_velocity(vector1: tuple, vector2: tuple):
+    speed_x = vector1[0] * vector2[0]
+    speed_y = vector1[1] * vector2[1]
+    vector1 = (speed_x, speed_y)
+    return vector1
 
 # ── Util / Helper Functions ──────────────────────────────
 def game_winner(winner: Player):

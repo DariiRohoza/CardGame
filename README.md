@@ -38,6 +38,7 @@ Assuming you have already been able to launch the game, follow these steps:
 | IDENTICAL_BOOST         | Bonus added for identical cards during merging.                                                                                                                                |
 |                         |
 | MIN_MOVE                | The minimum amount of moves that can be performed during the "Move" action.                                                                                                    |
+| SPEED_IMPACT            | The value by which your speed is devided to get its effect on the amount of moves, damage and actions.                                                                         |
 | VELOCITY_DECAY_X        | The variable by which the horizontal component of the player vector is multiplied to simulate air-drag and other factors that passively reduce the velocity of a given object. |
 | VELOCITY_DECAY_Y        | The variable by which the verctical component of the player vector is multiplied to simulate air-drag and other factors that passively reduce the velocity of a given object.  | 
 |                         |
