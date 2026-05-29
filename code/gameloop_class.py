@@ -2,6 +2,8 @@ from rich import box
 from rich.console import Console
 from rich.table import Table
 
+from math import tanh
+
 from pyfiglet import figlet_format
 
 from card_class import Card
@@ -319,7 +321,7 @@ class GameLoop:
         print_movement_table()
         move_list = []
         velocity_modifier = 1
-        max_moves = int(MIN_MOVE + curr_player.speed_value() // SPEED_IMPACT)
+        max_moves = MIN_MOVE + int(curr_player.speed_value() // SPEED_IMPACT)
         print(f"Input a movement sequence from the \"Move\" column in the table above\n"
               f"Separate each input with a \",\" with a maximum of {max_moves} choices")
 
@@ -393,7 +395,7 @@ def print_players(player_list: list[Player], curr_player: Player | None = None) 
     for idx, plr in enumerate(player_list):
         name, health = plr.name, f"{plr.health:,.2f}"
         defense, attack_stack = str(plr.defending), f"{plr.attack_stack:,.2f}"
-        actions, vector, active_tech = str(plr.action_count), plr.print_speed(), plr.active_tech
+        actions, speed, active_tech = str(plr.action_count), plr.speed_value(), plr.active_tech
         weakness, strength = plr.weakness, plr.strength
 
         if active_tech == "": active_tech = "None"
@@ -403,8 +405,8 @@ def print_players(player_list: list[Player], curr_player: Player | None = None) 
             active_tech = active_tech[:MAX_ACTIVE_TECH_LEN - 3] + "..."
         you = "You" if curr_player == plr else "N/A"
 
-        player_table.add_row(str(idx), name, health, defense, attack_stack,
-                             actions, vector, active_tech, weakness, strength, you)
+        player_table.add_row(str(idx), name, health, defense, attack_stack, actions,
+                             f"{speed:,.2f} m/s", active_tech, weakness, strength, you)
 
     console = Console(force_terminal=True, color_system="truecolor", width=200)
     console.print(player_table)
@@ -474,6 +476,24 @@ def attack_player(used_card: Card, attacker: Player, target: Player):
         target.defending = remaining_defense
 
     else:
+        speed_modifier = 1 + tanh((attacker.speed_value() - target.speed_value()) / (3 * SPEED_IMPACT))
+        if speed_modifier != 1:
+            damage *= speed_modifier
+            print(f" * Attacker and Target speeds modified damage ({speed_modifier:,.2f})")
+        if attacker.speed_value() > 0 and target.speed_value() > 0:
+            target_dir_x, target_dir_y = get_vector_direction(target.speed)
+            attacker_dir_x, attacker_dir_y = get_vector_direction(attacker.speed)
+            dif_dir_x = target_dir_x + attacker_dir_x
+            dif_dir_y = target_dir_y + attacker_dir_y
+
+            if dif_dir_x == 0:
+                damage *= 1.10
+            if dif_dir_y == 0:
+                damage *= 1.10
+            if dif_dir_x == dif_dir_y == 0:
+                damage *= 1.05
+            print(f" * Movement direction of both players affected damage slightly")
+
         if 0 < target.defending:
             damage *= 0.90 ** target.defending
             print(f" * Nullified 1 target defense stack")
@@ -554,30 +574,12 @@ def evaluate_movement_chunks(movement_chunks: list[tuple], player: Player) -> li
     return tech_list
 
 def evaluate_tech_list(tech_list: list[str], player: Player):
-    for i in range(len(tech_list) - 1):
+    for i in range(len(tech_list)):
         if tech_list[i] == player.active_tech:
             player.active_tech += " | CHAIN"
+            print(f" <*> CHAIN modifier added to {player.name}'s active tech ({player.active_tech})")
             continue
-
-        active_tech = player.active_tech
-        player.active_tech = tech_list[i]
-        if active_tech == "":
-            continue
-        if ":" not in active_tech:
-            player.passive_tech.update({active_tech: "NONE"})
-            print(f" <*> Added {active_tech} to {player.name}'s passive tech.")
-            continue
-        curr_tech_main, curr_tech_modifiers = active_tech.split(" : ")
-        if curr_tech_main not in player.passive_tech.keys():
-            player.passive_tech.update({curr_tech_main: curr_tech_modifiers})
-            print(f" <*> Added {curr_tech_main} to {player.name}'s passive tech.")
-            continue
-        player.passive_tech[curr_tech_main] += " | CHAIN"
-
-    if tech_list[-1] == player.active_tech:
-        player.active_tech += " | CHAIN"
-    else:
-        player.active_tech = tech_list[-1]
+        player.transfer_active_tech(tech_list[i])
 
 # ── Vector Functions ──────────────────────────────
 def get_vector_direction(vector): # returns a pair of values, can only be 0, 1 or -1
