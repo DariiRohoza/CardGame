@@ -176,7 +176,7 @@ class GameLoop:
         value, weakness_used, strength_used = evaluate_card(chosen_card, curr_player)
         evaluate_multipliers(curr_player, weakness_used, strength_used)
 
-        print(f"Increased {curr_player.name} attack stack by {value}\n")
+        print(f" - Increased {curr_player.name} attack stack by {value}\n")
         curr_player.attack_stack += value
 
         curr_hand.append(self.deck.draw_card())
@@ -213,9 +213,9 @@ class GameLoop:
 
         if curr_player.weakness == SUIT_LIB[user_choice_suit]:
             curr_player.weakness = ""
-            print(f" * Cured player weakness at no cost")
+            print(f" - Cured player weakness at no cost")
 
-        print(f"\n--> Granted player strength with the chosen suit ({SUIT_LIB[user_choice_suit]})")
+        print(f" - Granted player strength with the chosen suit ({SUIT_LIB[user_choice_suit]})")
         curr_player.strength = SUIT_LIB[user_choice_suit]
 
         new_card = Card()
@@ -231,15 +231,19 @@ class GameLoop:
         user_card = card_choosing(curr_hand)
         curr_hand.remove(user_card)
 
-        strength_bonus = MIN_GENERATED_CARD_RANK
-
+        rank_bonus = MIN_GENERATED_CARD_RANK
         if curr_player.strength == SUIT_LIB[user_card.suit]:
-            strength_bonus += 5
+            rank_bonus += 5
             curr_player.strength = ""
-            print(f" * Nullified player strength for a higher ranked card")
+            print(f" - Nullified player strength for a higher ranked card")
+
+        speed_bonus = int(curr_player.speed_value() // SPEED_IMPACT)
+        if speed_bonus > 0:
+            rank_bonus += speed_bonus
+            print(f" - Player speed increased the rank increase by ({speed_bonus})")
 
         new_card = Card()
-        new_card.add_info(user_card.suit, user_card.rank + strength_bonus, user_card.style)
+        new_card.add_info(user_card.suit, user_card.rank + rank_bonus, user_card.style)
 
         print(f"\n--> Increased rank card: {new_card}\n")
         curr_hand.append(new_card)
@@ -267,10 +271,10 @@ class GameLoop:
 
         if user_card_1st.suit != user_card_2nd.suit:
             rank_change += SUIT_PENALTY
-            print(f" * Applied suit penalty to the result ({SUIT_PENALTY})")
+            print(f" - Applied suit penalty to the result ({SUIT_PENALTY})")
         elif user_card_2nd.suit == user_card_1st.suit and user_card_2nd.rank == user_card_1st.rank:
             rank_change += IDENTICAL_BOOST
-            print(f" * Applied identicality boost to the result ({IDENTICAL_BOOST})")
+            print(f" - Applied identicality boost to the result ({IDENTICAL_BOOST})")
 
         merged_card = Card()
         merged_card.add_info(user_card_1st.suit, user_card_1st.rank + user_card_2nd.rank + rank_change, merged_style)
@@ -351,11 +355,10 @@ class GameLoop:
         if len(tech_list) > 0:
             evaluate_tech_list(tech_list, curr_player)
 
-        velocity_multiplier = (VELOCITY_DECAY_X * velocity_modifier, VELOCITY_DECAY_Y * velocity_modifier)
-        curr_player.speed = multiply_velocity(curr_player.speed, velocity_multiplier)
+        apply_velocity_decay(curr_player, velocity_modifier)
         print(f"{curr_player.name}'s speed change:\n"
-              f" >> {prev_vector} --> {curr_player.print_speed(True)}\n"
-              f" >> {prev_speed:,.2f} m/s --> {curr_player.speed_value():,.2f} m/s\n")
+              f" --> {prev_vector} --> {curr_player.print_speed(True)}\n"
+              f" --> {prev_speed:,.2f} m/s --> {curr_player.speed_value():,.2f} m/s\n")
         self.iterate_turn()
 
 # ── Table Printing Functions ──────────────────────────────
@@ -522,6 +525,8 @@ def attack_player(used_card: Card, attacker: Player, target: Player):
             damage *= 0.83 # 5/6 : reducing 1.5x to 1.25x attacker strength impact
             print(f" * Reduced attacker strength scaling")
 
+        apply_velocity_decay(target, 1.1)
+
     evaluate_multipliers(attacker, weakness_used, strength_used)
     if damage > 0:
         target.health -= damage
@@ -599,6 +604,10 @@ def multiply_velocity(vector1: tuple, vector2: tuple):
     speed_y = vector1[1] * vector2[1]
     vector1 = (speed_x, speed_y)
     return vector1
+
+def apply_velocity_decay(player: Player, velocity_modifier: float | int = 1):
+    velocity_multiplier = (VELOCITY_DECAY_X * velocity_modifier, VELOCITY_DECAY_Y * velocity_modifier)
+    player.speed = multiply_velocity(player.speed, velocity_multiplier)
 
 # ── Util / Helper Functions ──────────────────────────────
 def game_winner(winner: Player):
