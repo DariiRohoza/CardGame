@@ -72,7 +72,7 @@ PLAYER_PRINT = [("Index", 7), ("Name", 9), ("Health", 8), ("Defense", 9), ("Atk.
 MOVEMENT_PRINT = [("Index", 7), ("Move", 18), ("Vector", 12), ("Movement Tech", 17)]
 
 # set action multiplier to a number > 0 to change hp and action count accordingly | default is 1, recommended is 2
-ACTION_MULTIPLIER = 1
+ACTION_MULTIPLIER = 10
 
 # card variables
 MIN_GENERATED_CARD_RANK = 1

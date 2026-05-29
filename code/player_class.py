@@ -14,7 +14,7 @@ class Player:
         self.action_count: int = ACTION_AMOUNT
         self.speed: tuple[float, float] = INITIAL_SPEED
         self.active_tech: str = "" # after being used as an active, moves to the passive list to be used again
-        self.passive_tech: list[str] = []
+        self.passive_tech: dict[str, str] = {} # (tech + modifier) : CHAIN(s)
 
         # only values from SUIT_LIB or an empty string ""
         self.weakness: str = ""
@@ -35,6 +35,7 @@ class Player:
         return ((self.speed[0] ** 2) + (self.speed[1] ** 2)) ** (1/2)
 
     def transfer_active_tech(self, replacement: str | None = None) -> str:
+        chain = ""
         active_tech = self.active_tech
         if replacement is not None and replacement in MOVEMENT_TECH_LIB.values():
             self.active_tech = replacement
@@ -42,12 +43,14 @@ class Player:
 
         if active_tech == "":
             return "none"
-        if active_tech not in self.passive_tech:
-            self.passive_tech.append(active_tech)
-            print(f" <*> Added {active_tech} to {self.name}'s passive tech list")
+        if " \\ " in active_tech:
+            active_tech, chain = active_tech.split(" \\ ")
+            chain = " \\ " + chain
+        if active_tech not in self.passive_tech.keys():
+            self.passive_tech.update({active_tech: chain})
+            print(f" <*> Added {active_tech}{chain} to {self.name}'s passive tech list")
             return "added"
-        idx = self.passive_tech.index(active_tech)
-        self.passive_tech[idx] += " | CHAIN"
+        self.passive_tech[active_tech] += " \\ CHAIN" + chain
         print(f" <*> CHAIN modifier added to {active_tech} in {self.name}'s passive tech list")
         return "chain"
 

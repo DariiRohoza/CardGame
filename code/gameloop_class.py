@@ -576,7 +576,7 @@ def evaluate_movement_chunks(movement_chunks: list[tuple], player: Player) -> li
 def evaluate_tech_list(tech_list: list[str], player: Player):
     for i in range(len(tech_list)):
         if tech_list[i] == player.active_tech:
-            player.active_tech += " | CHAIN"
+            player.active_tech += " \\ CHAIN"
             print(f" <*> CHAIN modifier added to {player.name}'s active tech ({player.active_tech})")
             continue
         player.transfer_active_tech(tech_list[i])
