@@ -355,6 +355,25 @@ class GameLoop:
         if len(tech_list) > 0:
             evaluate_tech_list(tech_list, curr_player)
 
+        if "ULTRA" in curr_player.active_tech:
+            active_tech, modifiers_list, chain_len = curr_player.active_tech, [], 0
+            if " \\ " in active_tech:
+                active_tech, chain = active_tech.split(" \\ ", maxsplit=1)
+                chain_len = len(chain.split(" \\ "))
+            if " : " in active_tech:
+                active_tech, modifiers = active_tech.split(" : ", maxsplit=1)
+                modifiers_list = modifiers.split(" | ")
+
+            extension_bonus = 0.25 if "EXTENDED" in modifiers_list else 0
+            chain_mult = 1 + 1.10 * chain_len
+
+            ultra_mult_x = (1.50 + extension_bonus) * chain_mult
+            ultra_mult_y = (1.25 + extension_bonus) * chain_mult
+            ultra_mult = (ultra_mult_x, ultra_mult_y)
+            curr_player.speed = multiply_velocity(curr_player.speed, ultra_mult)
+            print(f" - {curr_player.name}'s speeds has been increased via an ultra active tech")
+            curr_player.transfer_active_tech()
+
         apply_velocity_decay(curr_player, velocity_modifier)
         print(f"{curr_player.name}'s speed change:\n"
               f" --> {prev_vector} --> {curr_player.print_speed(True)}\n"

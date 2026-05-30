@@ -44,7 +44,7 @@ class Player:
         if active_tech == "":
             return "none"
         if " \\ " in active_tech:
-            active_tech, chain = active_tech.split(" \\ ")
+            active_tech, chain = active_tech.split(" \\ ", maxsplit=1)
             chain = " \\ " + chain
         if active_tech not in self.passive_tech.keys():
             self.passive_tech.update({active_tech: chain})
