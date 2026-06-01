@@ -355,37 +355,107 @@ class GameLoop:
         if len(tech_list) > 0:
             evaluate_tech_list(tech_list, curr_player)
 
-        if "HYPER" in curr_player.active_tech or "SUPER" in curr_player.active_tech:
+        if "SUPER" in curr_player.active_tech or "HYPER" in curr_player.active_tech:
             active_tech, modifiers_list, chain_len = get_tech_modifiers(curr_player)
             plr_dir_x, plr_dir_y = get_vector_direction(curr_player.speed)
+            plr_dir_x = 1 if plr_dir_x == 0 else plr_dir_x
 
-            horizontal = 20 if active_tech == "HYPER" else 14
+            horizontal = 22 if active_tech == "HYPER" else 11
             vertical = 3 if active_tech == "HYPER" else 6
 
-            extension_bonus = 0.50 if "EXTENDED" in modifiers_list else 0
-            slide_bonus = 1.15 if "SLIDE" in modifiers_list else 0
+            extension = 0.50 if "EXTENDED" in modifiers_list else 0
+            slide = 1.10 if "SLIDE" in modifiers_list else 1
             chain_mult = 1 + 1.10 * chain_len
 
-            hyper_boost_x = (plr_dir_x * (horizontal + extension_bonus + slide_bonus)) * chain_mult
-            hyper_boost_y = (plr_dir_x * (vertical + extension_bonus)) * chain_mult
+            hyper_boost_x = (plr_dir_x * (horizontal + extension + slide)) * chain_mult
+            hyper_boost_y = (vertical - extension) * chain_mult
+
             hyper_boost = (hyper_boost_x, hyper_boost_y)
+
             curr_player.speed = add_velocity(curr_player.speed, hyper_boost)
-            print(f" - {curr_player.name}'s speed has been increased via a {active_tech.lower()} active tech")
+            print(f" - {curr_player.name}'s speed has been influenced via a {active_tech.lower()} active tech")
             curr_player.transfer_active_tech()
-            velocity_modifier *= slide_bonus
+            velocity_modifier *= slide
 
         elif "ULTRA" in curr_player.active_tech:
             active_tech, modifiers_list, chain_len = get_tech_modifiers(curr_player)
 
-            extension_bonus = 0.25 if "EXTENDED" in modifiers_list else 0
+            extension = 0.25 if "EXTENDED" in modifiers_list else 0
             chain_mult = 1 + 1.10 * chain_len
 
-            ultra_mult_x = (1.50 + extension_bonus) * chain_mult
-            ultra_mult_y = (1.25 + extension_bonus) * chain_mult
+            ultra_mult_x = (1.50 + extension) * chain_mult
+            ultra_mult_y = 1.25 * chain_mult
             ultra_mult = (ultra_mult_x, ultra_mult_y)
+
             curr_player.speed = multiply_velocity(curr_player.speed, ultra_mult)
-            print(f" - {curr_player.name}'s speed has been increased via an ultra active tech")
+            print(f" - {curr_player.name}'s speed has been influenced via an ultra active tech")
             curr_player.transfer_active_tech()
+
+        elif "B-HOP" in curr_player.active_tech and curr_player.speed_value() > 0:
+            active_tech, modifiers_list, chain_len = get_tech_modifiers(curr_player)
+            plr_dir_x, plr_dir_y = get_vector_direction(curr_player.speed)
+            plr_dir_x = 1 if plr_dir_x == 0 else plr_dir_x
+
+            extension = 0.25 if "EXTENDED" in modifiers_list else 0
+            high_jump = 0.75 if "HIGH-JUMP" in modifiers_list else 0
+            chain_mult = 1 + 1.10 * chain_len
+
+            b_hop_boost_x = (plr_dir_x * (12 + extension)) * chain_mult
+            b_hop_boost_y = (3.5 + high_jump) * chain_mult
+            b_hop_boost = (b_hop_boost_x, b_hop_boost_y)
+
+            curr_player.speed = add_velocity(curr_player.speed, b_hop_boost)
+            print(f" - {curr_player.name}'s speed has been influenced via a b-hop active tech")
+            curr_player.transfer_active_tech()
+            velocity_modifier *= 1.20
+
+        elif "FALL-BOOST" in curr_player.active_tech:
+            active_tech, modifiers_list, chain_len = get_tech_modifiers(curr_player)
+            plr_dir_x, plr_dir_y = get_vector_direction(curr_player.speed)
+            plr_dir_x *= -1 # inverting, FALL-BOOST decreases horizontal speed
+
+            slow_fall = 0.65 if "SLOW-FALL" in modifiers_list else 1
+            fast_fall = 1.35 if "FAST-FALL" in modifiers_list else 1
+            chain_mult = 1 + 1.10 * chain_len
+
+            fall_boost_x = plr_dir_x * 3.5 * chain_mult
+            fall_boost_y = (-25 * slow_fall * fast_fall) * chain_mult
+            fall_boost = (fall_boost_x, fall_boost_y)
+
+            curr_player.speed = add_velocity(curr_player.speed, fall_boost)
+            print(f" - {curr_player.name}'s speed has been influenced via a fall-boost active tech")
+            curr_player.transfer_active_tech()
+
+            if slow_fall > 1:
+                curr_player.defending += 1
+                print(f" - {curr_player.name}'s defense stacks have been increased by 1 via slow-falling")
+            elif fast_fall > 1:
+                def_change = 1 if curr_player.defending >= 1 else 0
+                curr_player.defending -= def_change
+                print(f" - {curr_player.name}'s defense stacks have been decreased by {def_change} via fast-falling")
+
+        elif "BOUNCE-BOOST" in curr_player.active_tech:
+            active_tech, modifiers_list, chain_len = get_tech_modifiers(curr_player)
+            plr_dir_x, plr_dir_y = get_vector_direction(curr_player.speed)
+            plr_dir_x *= -1  # inverting, BOUNCE-BOOST decreases horizontal speed
+
+            extension = 0.50 if "EXTENDED" in modifiers_list else 0
+            high_jump = 0.75 if "HIGH-JUMP" in modifiers_list else 0
+            chain_mult = 1 + 1.10 * chain_len
+
+            bounce_boost_x = plr_dir_x * 3.5 * chain_mult
+            bounce_boost_y = 20 * (1 + extension + high_jump) * chain_mult
+            bounce_boost = (bounce_boost_x, bounce_boost_y)
+
+            curr_player.speed = add_velocity(curr_player.speed, bounce_boost)
+            print(f" - {curr_player.name}'s speed has been influenced via a bounce-boost active tech")
+            curr_player.transfer_active_tech()
+
+            if high_jump > 0:
+                def_change = int(bounce_boost_y // SPEED_IMPACT)
+                def_change = def_change if curr_player.defending > def_change else curr_player.defending
+                curr_player.defending -= def_change
+                print(f" - {curr_player.name}'s defense stacks have been decreased by {def_change} via high-jumping")
 
         apply_velocity_decay(curr_player, velocity_modifier)
         print(f"{curr_player.name}'s speed change:\n"

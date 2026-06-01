@@ -14,7 +14,7 @@ class Player:
         self.action_count: int = ACTION_AMOUNT
         self.speed: tuple[float, float] = INITIAL_SPEED
         self.active_tech: str = "" # after being used as an active, moves to the passive list to be used again
-        self.passive_tech: dict[str, str] = {} # (tech + modifier) : CHAIN(s)
+        self.passive_tech: dict[str, str] = {} # (tech + modifier(s)) : CHAIN(s)
 
         # only values from SUIT_LIB or an empty string ""
         self.weakness: str = ""
