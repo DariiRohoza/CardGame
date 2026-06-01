@@ -23,8 +23,8 @@ class Player:
     def __str__(self):
         if self.health <= 0.00:
             return f"A dead player"
-        return (f"A player at {self.health:,.2f}hp; {self.action_count} speed; {self.defending} defense stacks; "
-                f"Weakness: {self.weakness}; Strength: {self.strength}")
+        return (f"{self.name}; {self.health:,.2f}hp with {self.defending} defense stacks "
+                f"(Strength: {self.strength} & Weakness: {self.weakness})")
 
     def print_speed(self, units: bool = False):
         if units:

@@ -355,14 +355,25 @@ class GameLoop:
         if len(tech_list) > 0:
             evaluate_tech_list(tech_list, curr_player)
 
-        if "ULTRA" in curr_player.active_tech:
-            active_tech, modifiers_list, chain_len = curr_player.active_tech, [], 0
-            if " \\ " in active_tech:
-                active_tech, chain = active_tech.split(" \\ ", maxsplit=1)
-                chain_len = len(chain.split(" \\ "))
-            if " : " in active_tech:
-                active_tech, modifiers = active_tech.split(" : ", maxsplit=1)
-                modifiers_list = modifiers.split(" | ")
+        if "HYPER" in curr_player.active_tech or "SUPER" in curr_player.active_tech:
+            active_tech, modifiers_list, chain_len = get_tech_modifiers(curr_player)
+            plr_dir_x, plr_dir_y = get_vector_direction(curr_player.speed)
+
+            horizontal = 20 if active_tech == "HYPER" else 14
+            vertical = 3 if active_tech == "HYPER" else 6
+
+            extension_bonus = 0.50 if "EXTENDED" in modifiers_list else 0
+            slide_bonus = 1.15 if "SLIDE" in modifiers_list else 0
+            chain_mult = 1 + 1.10 * chain_len
+
+            hyper_boost_x = (plr_dir_x * (horizontal + extension_bonus + slide_bonus)) * chain_mult
+            hyper_boost_y = (plr_dir_x * (vertical + extension_bonus)) * chain_mult
+            hyper_boost = (hyper_boost_x, hyper_boost_y)
+            curr_player.speed = add_velocity(curr_player.speed, hyper_boost)
+            velocity_modifier *= slide_bonus
+
+        elif "ULTRA" in curr_player.active_tech:
+            active_tech, modifiers_list, chain_len = get_tech_modifiers(curr_player)
 
             extension_bonus = 0.25 if "EXTENDED" in modifiers_list else 0
             chain_mult = 1 + 1.10 * chain_len
@@ -508,13 +519,11 @@ def attack_player(used_card: Card, attacker: Player, target: Player):
             dif_dir_x = target_dir_x + attacker_dir_x
             dif_dir_y = target_dir_y + attacker_dir_y
 
-            if dif_dir_x == 0:
-                damage *= 1.10
-            if dif_dir_y == 0:
-                damage *= 1.10
-            if dif_dir_x == dif_dir_y == 0:
-                damage *= 1.05
-            print(f" * Movement direction of both players affected damage slightly")
+            mult_x = 1.05 + (-0.05 * dif_dir_x)
+            mult_y = 1.05 + (-0.05 * dif_dir_y)
+            damage *= mult_x
+            damage *= mult_y
+            print(f" * Movement direction of both players affected damage slightly (x: {mult_x}, y: {mult_y})")
 
         if 0 < target.defending:
             damage *= 0.90 ** target.defending
@@ -587,12 +596,9 @@ def evaluate_movement_chunks(movement_chunks: list[tuple], player: Player) -> li
             dif_dir_x = mv_dir_x + plr_dir_x
             dif_dir_y = mv_dir_y + plr_dir_y
 
-            if dif_dir_x == 0:
-                move_vector = multiply_velocity(move_vector, (1.5, 1.0))
-            if dif_dir_y == 0:
-                move_vector = multiply_velocity(move_vector, (1.0, 1.5))
-            if dif_dir_x == dif_dir_y == 0:
-                move_vector = multiply_velocity(move_vector, (1.25, 1.25))
+            mult_x = (29 / 120) * dif_dir_x ** 3 - (1 / 2) * dif_dir_x ** 2 - (29 / 120) * dif_dir_x + (3 / 2)
+            mult_y = (29 / 120) * dif_dir_y ** 3 - (1 / 2) * dif_dir_y ** 2 - (29 / 120) * dif_dir_y + (3 / 2)
+            move_vector = multiply_velocity(move_vector, (mult_x, mult_y))
 
             player.speed = add_velocity(player.speed, move_vector)
     return tech_list
@@ -604,6 +610,16 @@ def evaluate_tech_list(tech_list: list[str], player: Player):
             print(f" <*> CHAIN modifier added to {player.name}'s active tech ({player.active_tech})")
             continue
         player.transfer_active_tech(tech_list[i])
+
+def get_tech_modifiers(player: Player):
+    active_tech, modifiers_list, chain_len = player.active_tech, [], 0
+    if " \\ " in active_tech:
+        active_tech, chain = active_tech.split(" \\ ", maxsplit=1)
+        chain_len = len(chain.split(" \\ "))
+    if " : " in active_tech:
+        active_tech, modifiers = active_tech.split(" : ", maxsplit=1)
+        modifiers_list = modifiers.split(" | ")
+    return active_tech, modifiers_list, chain_len
 
 # ── Vector Functions ──────────────────────────────
 def get_vector_direction(vector): # returns a pair of values, can only be 0, 1 or -1
@@ -649,8 +665,7 @@ def card_choosing(curr_hand: list[Card]) -> Card:
             continue
         user_chosen_card = curr_hand[user_choice_card]
         print(f"The card you chose : {user_chosen_card}")
-        user_in = input(f"Input \"retry\" if you wish to pick a different card: ")
-        if user_in.lower() == "retry":
+        if input(f"Input \"retry\" if you wish to pick a different card: ").lower() == "retry":
             continue
         break
     return user_chosen_card
