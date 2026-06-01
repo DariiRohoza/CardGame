@@ -370,6 +370,8 @@ class GameLoop:
             hyper_boost_y = (plr_dir_x * (vertical + extension_bonus)) * chain_mult
             hyper_boost = (hyper_boost_x, hyper_boost_y)
             curr_player.speed = add_velocity(curr_player.speed, hyper_boost)
+            print(f" - {curr_player.name}'s speed has been increased via a {active_tech.lower()} active tech")
+            curr_player.transfer_active_tech()
             velocity_modifier *= slide_bonus
 
         elif "ULTRA" in curr_player.active_tech:
@@ -382,7 +384,7 @@ class GameLoop:
             ultra_mult_y = (1.25 + extension_bonus) * chain_mult
             ultra_mult = (ultra_mult_x, ultra_mult_y)
             curr_player.speed = multiply_velocity(curr_player.speed, ultra_mult)
-            print(f" - {curr_player.name}'s speeds has been increased via an ultra active tech")
+            print(f" - {curr_player.name}'s speed has been increased via an ultra active tech")
             curr_player.transfer_active_tech()
 
         apply_velocity_decay(curr_player, velocity_modifier)
