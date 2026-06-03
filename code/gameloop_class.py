@@ -194,8 +194,8 @@ class GameLoop:
             full_tech = tech + " \\ " + chain if chain != "" else tech
             passive_tech, modifiers_list, chain_len = get_tech_modifiers(full_tech)
 
-            extension = 0.75 if "EXTENDED" in modifiers_list else 0
-            slide = 1.1 if "SLIDE" in modifiers_list else 1
+            extension = 1 if "EXTENDED" in modifiers_list else 0
+            slide = 1.3 if "SLIDE" in modifiers_list else 1
             chain_mult = 1 + 1.10 * chain_len
 
             tech_bonus = (1 + extension) * chain_mult * slide
@@ -388,15 +388,15 @@ class GameLoop:
             plr_dir_x, plr_dir_y = get_vector_direction(curr_player.speed)
             plr_dir_x = 1 if plr_dir_x == 0 else plr_dir_x
 
-            horizontal = 30 if active_tech == "HYPER" else 15
+            horizontal = 26 if active_tech == "HYPER" else 15
             vertical = 3 if active_tech == "HYPER" else 9
 
-            extension = 0.75 if "EXTENDED" in modifiers_list else 0
-            slide = 1.15 if "SLIDE" in modifiers_list else 1
+            extension = 1.2 if "EXTENDED" in modifiers_list else 1
+            slide = 1.3 if "SLIDE" in modifiers_list else 1
             chain_mult = 1 + 1.10 * chain_len
 
-            hyper_boost_x = (plr_dir_x * (horizontal + extension + slide)) * chain_mult
-            hyper_boost_y = (vertical + 1 - extension) * chain_mult
+            hyper_boost_x = (plr_dir_x * horizontal * extension * slide) * chain_mult
+            hyper_boost_y = vertical * chain_mult
 
             hyper_boost = (hyper_boost_x, hyper_boost_y)
 
@@ -408,7 +408,7 @@ class GameLoop:
         elif "ULTRA" in active_tech:
             active_tech, modifiers_list, chain_len = get_tech_modifiers(active_tech)
 
-            extension = 0.35 if "EXTENDED" in modifiers_list else 0
+            extension = 0.50 if "EXTENDED" in modifiers_list else 0
             chain_mult = 1 + 1.10 * chain_len
 
             ultra_mult_x = (1.50 + extension) * chain_mult
@@ -422,10 +422,9 @@ class GameLoop:
         elif "B-HOP" in active_tech and curr_player.speed_value() > 0:
             active_tech, modifiers_list, chain_len = get_tech_modifiers(active_tech)
             plr_dir_x, plr_dir_y = get_vector_direction(curr_player.speed)
-            plr_dir_x = 1 if plr_dir_x == 0 else plr_dir_x
 
-            extension = 0.35 if "EXTENDED" in modifiers_list else 0
-            high_jump = 0.65 if "HIGH-JUMP" in modifiers_list else 0
+            extension = 0.45 if "EXTENDED" in modifiers_list else 0
+            high_jump = 0.75 if "HIGH-JUMP" in modifiers_list else 0
             chain_mult = 1 + 1.10 * chain_len
 
             b_hop_boost_x = (plr_dir_x * (12 + extension)) * chain_mult
@@ -435,15 +434,15 @@ class GameLoop:
             curr_player.speed = add_velocity(curr_player.speed, b_hop_boost)
             print(f" - {curr_player.name}'s speed has been influenced via a b-hop active tech")
             curr_player.transfer_active_tech()
-            velocity_modifier /= 1.25
+            velocity_modifier /= (1.25 + extension // 3 + high_jump // 4)
 
         elif "FALL-BOOST" in active_tech:
             active_tech, modifiers_list, chain_len = get_tech_modifiers(active_tech)
             plr_dir_x, plr_dir_y = get_vector_direction(curr_player.speed)
             plr_dir_x *= -1 # inverting, FALL-BOOST decreases horizontal speed
 
-            slow_fall = 0.65 if "SLOW-FALL" in modifiers_list else 1
-            fast_fall = 1.35 if "FAST-FALL" in modifiers_list else 1
+            slow_fall = 0.70 if "SLOW-FALL" in modifiers_list else 1
+            fast_fall = 1.40 if "FAST-FALL" in modifiers_list else 1
             chain_mult = 1 + 1.10 * chain_len
 
             fall_boost_x = plr_dir_x * 3.5 * chain_mult
@@ -467,8 +466,8 @@ class GameLoop:
             plr_dir_x, plr_dir_y = get_vector_direction(curr_player.speed)
             plr_dir_x *= -1  # inverting, BOUNCE-BOOST decreases horizontal speed
 
-            extension = 0.65 if "EXTENDED" in modifiers_list else 0
-            high_jump = 0.75 if "HIGH-JUMP" in modifiers_list else 0
+            extension = 0.70 if "EXTENDED" in modifiers_list else 0
+            high_jump = 0.80 if "HIGH-JUMP" in modifiers_list else 0
             chain_mult = 1 + 1.10 * chain_len
 
             bounce_boost_x = plr_dir_x * (3.5 - extension) * chain_mult
@@ -631,7 +630,7 @@ def attack_player(used_card: Card, attacker: Player, target: Player):
             passive_tech, modifiers_list, chain_len = get_tech_modifiers(full_tech)
 
             extension = 0.25 if "EXTENDED" in modifiers_list else 0
-            chain_mult = 0.40 + 0.20 * chain_len
+            chain_mult = 0.50 + 0.20 * chain_len
 
             mult = 1 + extension * chain_mult
             damage *= mult
