@@ -2,7 +2,7 @@ from rich import box
 from rich.console import Console
 from rich.table import Table
 
-from math import tanh
+from math import tanh, cosh
 
 from pyfiglet import figlet_format
 
@@ -51,6 +51,8 @@ class GameLoop:
 
     def main_loop(self):
         while not self.conclude_game:
+            velocity_modifier = 1
+            no_decay = False
             if len(self.deck) == 0:
                 self.deck.fill()
                 self.deck.shuffle()
@@ -86,12 +88,17 @@ class GameLoop:
                 case "7": self.stylize_card(curr_player, curr_hand)
                 case "8": self.drop_half_cards(curr_player, curr_hand)
                 case "9": self.defend(curr_player, 2)
-                case "10": self.move_player(curr_player)
+                case "10": velocity_modifier = self.move_player(curr_player)
 
                 case "quit" | "QUIT":
                     self.conclude_game = True
                 case _:
                     print(f"Invalid input, try again...\n")
+                    no_decay = True
+
+            if curr_player.speed_value() > 0 and self.action_counter == 0 and not no_decay:
+                apply_velocity_decay(curr_player, velocity_modifier, velocity_modifier)
+                print(f">>> Applied velocity decay to {curr_player.name}\n")
 
     # ── MainLoop Util / Helper Functions ──────────────────────────────
     def iterate_turn(self):
@@ -140,7 +147,7 @@ class GameLoop:
             break
 
         if user_chosen_target is not None and user_chosen_card is not None:
-            print(f"{curr_player.name} has decided to attack {user_chosen_target.name} using:", user_chosen_card)
+            print(f"{curr_player.name} has decided to attack {user_chosen_target.name} using: {user_chosen_card}")
 
             attack_player(user_chosen_card, curr_player, user_chosen_target)
 
@@ -159,6 +166,7 @@ class GameLoop:
         self.iterate_turn()
 
     def stack_attack_value(self, curr_player: Player, curr_hand: list[Card]) -> bool:
+        tech_bonus = 0
         filter_hand = []
         for item in curr_hand:
             if item.rank <= STACK_RANK_LIMIT:
@@ -176,8 +184,28 @@ class GameLoop:
         value, weakness_used, strength_used = evaluate_card(chosen_card, curr_player)
         evaluate_multipliers(curr_player, weakness_used, strength_used)
 
-        print(f" - Increased {curr_player.name} attack stack by {value}\n")
-        curr_player.attack_stack += value
+        print(curr_player.passive_tech)
+
+        matched_keys = get_player_passive(curr_player, "SUPER")
+        if not matched_keys:
+            matched_keys = get_player_passive(curr_player, "HYPER")
+
+        if matched_keys:
+            tech, chain = matched_keys[0]
+            full_tech = tech + " \\ " + chain if chain != "" else tech
+            passive_tech, modifiers_list, chain_len = get_tech_modifiers(full_tech)
+
+            extension = 0.75 if "EXTENDED" in modifiers_list else 0
+            slide = 1.1 if "SLIDE" in modifiers_list else 1
+            chain_mult = 1 + 1.10 * chain_len
+
+            tech_bonus = (1 + extension) * chain_mult * slide
+            print(f" - {curr_player.name}'s passive tech increased attack stack"
+                  f"(tech: {full_tech} bonus: {tech_bonus:,.2f})")
+            del curr_player.passive_tech[tech]
+
+        curr_player.attack_stack += value + tech_bonus
+        print(f" - Increased {curr_player.name} attack stack by {value} (total change: {value + tech_bonus:,.2f})\n")
 
         curr_hand.append(self.deck.draw_card())
         self.iterate_turn()
@@ -215,8 +243,8 @@ class GameLoop:
             curr_player.weakness = ""
             print(f" - Cured player weakness at no cost")
 
-        print(f" - Granted player strength with the chosen suit ({SUIT_LIB[user_choice_suit]})")
         curr_player.strength = SUIT_LIB[user_choice_suit]
+        print(f" - Granted player strength with the chosen suit ({curr_player.strength})")
 
         new_card = Card()
         new_card.add_info(user_choice_suit, user_card.rank, user_card.style)
@@ -231,19 +259,19 @@ class GameLoop:
         user_card = card_choosing(curr_hand)
         curr_hand.remove(user_card)
 
-        rank_bonus = MIN_GENERATED_CARD_RANK
+        rank_change = MIN_GENERATED_CARD_RANK
         if curr_player.strength == SUIT_LIB[user_card.suit]:
-            rank_bonus += 5
+            rank_change += 5
             curr_player.strength = ""
             print(f" - Nullified player strength for a higher ranked card")
 
-        speed_bonus = int(curr_player.speed_value() // SPEED_IMPACT)
+        speed_bonus = int(2 * curr_player.speed_value() // SPEED_IMPACT)
         if speed_bonus > 0:
-            rank_bonus += speed_bonus
+            rank_change += speed_bonus
             print(f" - Player speed increased the rank increase by ({speed_bonus})")
 
         new_card = Card()
-        new_card.add_info(user_card.suit, user_card.rank + rank_bonus, user_card.style)
+        new_card.add_info(user_card.suit, user_card.rank + rank_change, user_card.style)
 
         print(f"\n--> Increased rank card: {new_card}\n")
         curr_hand.append(new_card)
@@ -316,12 +344,12 @@ class GameLoop:
         print(f"{cards_removed} new cards have been added to your hand\n")
         self.iterate_turn()
 
-    def defend(self, curr_player, def_stacks: int):
+    def defend(self, curr_player: Player, def_stacks: int):
         curr_player.defending += def_stacks
         print(f"{curr_player.name} has gained {def_stacks} stack(s) of defense\n")
         self.iterate_turn()
 
-    def move_player(self, curr_player):
+    def move_player(self, curr_player: Player) -> float:
         print_movement_table()
         move_list = []
         velocity_modifier = 1
@@ -355,8 +383,9 @@ class GameLoop:
         if len(tech_list) > 0:
             evaluate_tech_list(tech_list, curr_player)
 
-        if "SUPER" in curr_player.active_tech or "HYPER" in curr_player.active_tech:
-            active_tech, modifiers_list, chain_len = get_tech_modifiers(curr_player)
+        active_tech = curr_player.active_tech
+        if "SUPER" in curr_player.active_tech or "HYPER" in active_tech:
+            active_tech, modifiers_list, chain_len = get_tech_modifiers(active_tech)
             plr_dir_x, plr_dir_y = get_vector_direction(curr_player.speed)
             plr_dir_x = 1 if plr_dir_x == 0 else plr_dir_x
 
@@ -375,10 +404,10 @@ class GameLoop:
             curr_player.speed = add_velocity(curr_player.speed, hyper_boost)
             print(f" - {curr_player.name}'s speed has been influenced via a {active_tech.lower()} active tech")
             curr_player.transfer_active_tech()
-            velocity_modifier *= slide
+            velocity_modifier /= slide
 
-        elif "ULTRA" in curr_player.active_tech:
-            active_tech, modifiers_list, chain_len = get_tech_modifiers(curr_player)
+        elif "ULTRA" in active_tech:
+            active_tech, modifiers_list, chain_len = get_tech_modifiers(active_tech)
 
             extension = 0.25 if "EXTENDED" in modifiers_list else 0
             chain_mult = 1 + 1.10 * chain_len
@@ -391,8 +420,8 @@ class GameLoop:
             print(f" - {curr_player.name}'s speed has been influenced via an ultra active tech")
             curr_player.transfer_active_tech()
 
-        elif "B-HOP" in curr_player.active_tech and curr_player.speed_value() > 0:
-            active_tech, modifiers_list, chain_len = get_tech_modifiers(curr_player)
+        elif "B-HOP" in active_tech and curr_player.speed_value() > 0:
+            active_tech, modifiers_list, chain_len = get_tech_modifiers(active_tech)
             plr_dir_x, plr_dir_y = get_vector_direction(curr_player.speed)
             plr_dir_x = 1 if plr_dir_x == 0 else plr_dir_x
 
@@ -407,10 +436,10 @@ class GameLoop:
             curr_player.speed = add_velocity(curr_player.speed, b_hop_boost)
             print(f" - {curr_player.name}'s speed has been influenced via a b-hop active tech")
             curr_player.transfer_active_tech()
-            velocity_modifier *= 1.20
+            velocity_modifier /= 1.20
 
-        elif "FALL-BOOST" in curr_player.active_tech:
-            active_tech, modifiers_list, chain_len = get_tech_modifiers(curr_player)
+        elif "FALL-BOOST" in active_tech:
+            active_tech, modifiers_list, chain_len = get_tech_modifiers(active_tech)
             plr_dir_x, plr_dir_y = get_vector_direction(curr_player.speed)
             plr_dir_x *= -1 # inverting, FALL-BOOST decreases horizontal speed
 
@@ -434,8 +463,8 @@ class GameLoop:
                 curr_player.defending -= def_change
                 print(f" - {curr_player.name}'s defense stacks have been decreased by {def_change} via fast-falling")
 
-        elif "BOUNCE-BOOST" in curr_player.active_tech:
-            active_tech, modifiers_list, chain_len = get_tech_modifiers(curr_player)
+        elif "BOUNCE-BOOST" in active_tech:
+            active_tech, modifiers_list, chain_len = get_tech_modifiers(active_tech)
             plr_dir_x, plr_dir_y = get_vector_direction(curr_player.speed)
             plr_dir_x *= -1  # inverting, BOUNCE-BOOST decreases horizontal speed
 
@@ -457,11 +486,11 @@ class GameLoop:
                 curr_player.defending -= def_change
                 print(f" - {curr_player.name}'s defense stacks have been decreased by {def_change} via high-jumping")
 
-        apply_velocity_decay(curr_player, velocity_modifier)
         print(f"{curr_player.name}'s speed change:\n"
               f" --> {prev_vector} --> {curr_player.print_speed(True)}\n"
               f" --> {prev_speed:,.2f} m/s --> {curr_player.speed_value():,.2f} m/s\n")
         self.iterate_turn()
+        return velocity_modifier
 
 # ── Table Printing Functions ──────────────────────────────
 def print_hand(curr_player: Player | None = None, curr_hand: list[Card] | None = None) -> bool:
@@ -591,11 +620,25 @@ def attack_player(used_card: Card, attacker: Player, target: Player):
             dif_dir_x = target_dir_x + attacker_dir_x
             dif_dir_y = target_dir_y + attacker_dir_y
 
-            mult_x = 1.05 + (-0.05 * dif_dir_x)
-            mult_y = 1.05 + (-0.05 * dif_dir_y)
+            mult_x = 1.05 + (-0.05 * abs(dif_dir_x))
+            mult_y = 1.05 + (-0.05 * abs(dif_dir_y))
             damage *= mult_x
             damage *= mult_y
-            print(f" * Movement direction of both players affected damage slightly (x: {mult_x}, y: {mult_y})")
+            print(f" * Movement direction of both players affected damage (x: {mult_x:,.2f}, y: {mult_y:,.2f})")
+
+        matched_keys = get_player_passive(attacker, "ULTRA")
+        if matched_keys:
+            tech, chain = matched_keys[0]
+            full_tech = tech + " \\ " + chain if chain != "" else tech
+            passive_tech, modifiers_list, chain_len = get_tech_modifiers(full_tech)
+
+            extension = 0.25 if "EXTENDED" in modifiers_list else 0
+            chain_mult = 0.40 + 0.20 * chain_len
+
+            mult = 1 + extension * chain_mult
+            damage *= mult
+            print(f" * Attacker passive tech increased damage (tech: {full_tech} multiplier: {mult:,.2f})")
+            del attacker.passive_tech[tech]
 
         if 0 < target.defending:
             damage *= 0.90 ** target.defending
@@ -625,7 +668,7 @@ def attack_player(used_card: Card, attacker: Player, target: Player):
             damage *= 0.83 # 5/6 : reducing 1.5x to 1.25x attacker strength impact
             print(f" * Reduced attacker strength scaling")
 
-        apply_velocity_decay(target, 1.1)
+        apply_velocity_decay(target, 0.2, 0.2)
 
     evaluate_multipliers(attacker, weakness_used, strength_used)
     if damage > 0:
@@ -638,12 +681,13 @@ def attack_player(used_card: Card, attacker: Player, target: Player):
         print(f"{target.name}'s was unaffected by the attack\n")
 
 # ── Movement Functions ──────────────────────────────
-def chunk_split_movement(movement: list) -> list[tuple]:
+def chunk_split_movement(movement: list[str]) -> list[tuple]:
+    max_tech_len = max(len(key) for key in MOVEMENT_TECH_LIB)
     movement_chunks = []
     i = 0
     while i < len(movement):
         matched = False
-        for length in range(min(4, len(movement) - i), 0, - 1):
+        for length in range(min(max_tech_len, len(movement) - i), 0, - 1):
             part = tuple(movement[i: i + length])
             if part in MOVEMENT_TECH_LIB.keys():
                 movement_chunks.append(part)
@@ -655,7 +699,7 @@ def chunk_split_movement(movement: list) -> list[tuple]:
             i += 1
     return movement_chunks
 
-def evaluate_movement_chunks(movement_chunks: list[tuple], player: Player) -> list:
+def evaluate_movement_chunks(movement_chunks: list[tuple], player: Player) -> list[str]:
     tech_list = []
     for chunk in movement_chunks:
         if chunk in MOVEMENT_TECH_LIB.keys():
@@ -683,8 +727,8 @@ def evaluate_tech_list(tech_list: list[str], player: Player):
             continue
         player.transfer_active_tech(tech_list[i])
 
-def get_tech_modifiers(player: Player):
-    active_tech, modifiers_list, chain_len = player.active_tech, [], 0
+def get_tech_modifiers(active_tech: str):
+    active_tech, modifiers_list, chain_len = active_tech, [], 0
     if " \\ " in active_tech:
         active_tech, chain = active_tech.split(" \\ ", maxsplit=1)
         chain_len = len(chain.split(" \\ "))
@@ -692,6 +736,10 @@ def get_tech_modifiers(player: Player):
         active_tech, modifiers = active_tech.split(" : ", maxsplit=1)
         modifiers_list = modifiers.split(" | ")
     return active_tech, modifiers_list, chain_len
+
+def get_player_passive(player: Player, string: str) -> list[tuple]:
+    matched_keys = [(key, value) for key, value in player.passive_tech.items() if string in key]
+    return matched_keys
 
 # ── Vector Functions ──────────────────────────────
 def get_vector_direction(vector): # returns a pair of values, can only be 0, 1 or -1
@@ -712,14 +760,19 @@ def multiply_velocity(vector1: tuple, vector2: tuple):
     vector1 = (speed_x, speed_y)
     return vector1
 
-def apply_velocity_decay(player: Player, velocity_modifier: float | int = 1):
-    velocity_multiplier = (VELOCITY_DECAY_X * velocity_modifier, VELOCITY_DECAY_Y * velocity_modifier)
-    player.speed = multiply_velocity(player.speed, velocity_multiplier)
+def apply_velocity_decay(player: Player, vel_dx: float | int = 1, vel_dy: float | int = 1):
+    vel_mult_x = sech((player.speed_value() * vel_dx) / (VELOCITY_DECAY_X * SPEED_IMPACT))
+    vel_mult_y = sech((player.speed_value() * vel_dy) / (VELOCITY_DECAY_Y * SPEED_IMPACT))
+    vel_mult = (vel_mult_x, vel_mult_y)
+    player.speed = multiply_velocity(player.speed, vel_mult)
 
 # ── Util / Helper Functions ──────────────────────────────
 def game_winner(winner: Player):
     print(f"The player that has eliminated all the other players and won is!\n",
           figlet_format(f"{winner.name}", font="larry3d"))
+
+def sech(x):
+    return 1 / cosh(x)
 
 def card_choosing(curr_hand: list[Card]) -> Card:
     user_chosen_card = curr_hand[0]

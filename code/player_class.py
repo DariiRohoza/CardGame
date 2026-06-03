@@ -40,14 +40,16 @@ class Player:
         if replacement is not None and replacement in MOVEMENT_TECH_LIB.values():
             self.active_tech = replacement
             print(f" <*> Updated {self.name}'s active tech to be {self.active_tech}")
+        else:
+            self.active_tech = ""
 
         if active_tech == "":
             return "none"
         if " \\ " in active_tech:
             active_tech, chain = active_tech.split(" \\ ", maxsplit=1)
-            chain = " \\ " + chain
         if active_tech not in self.passive_tech.keys():
             self.passive_tech.update({active_tech: chain})
+            chain = " \\ " + chain if chain != "" else chain
             print(f" <*> Added {active_tech}{chain} to {self.name}'s passive tech list")
             return "added"
         self.passive_tech[active_tech] += " \\ CHAIN" + chain
