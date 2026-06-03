@@ -114,7 +114,6 @@ class GameLoop:
         return curr_player, curr_hand
 
     # ── MainLoop SubFunctions ──────────────────────────────
-    # TODO : Implement speed having an effect on actions as well as passive and active tech influence
     def attack_turn(self, curr_player: Player, curr_hand: list[Card]):
         user_chosen_target = None
 
@@ -389,15 +388,15 @@ class GameLoop:
             plr_dir_x, plr_dir_y = get_vector_direction(curr_player.speed)
             plr_dir_x = 1 if plr_dir_x == 0 else plr_dir_x
 
-            horizontal = 22 if active_tech == "HYPER" else 11
-            vertical = 3 if active_tech == "HYPER" else 6
+            horizontal = 30 if active_tech == "HYPER" else 15
+            vertical = 3 if active_tech == "HYPER" else 9
 
-            extension = 0.50 if "EXTENDED" in modifiers_list else 0
-            slide = 1.10 if "SLIDE" in modifiers_list else 1
+            extension = 0.75 if "EXTENDED" in modifiers_list else 0
+            slide = 1.15 if "SLIDE" in modifiers_list else 1
             chain_mult = 1 + 1.10 * chain_len
 
             hyper_boost_x = (plr_dir_x * (horizontal + extension + slide)) * chain_mult
-            hyper_boost_y = (vertical - extension) * chain_mult
+            hyper_boost_y = (vertical + 1 - extension) * chain_mult
 
             hyper_boost = (hyper_boost_x, hyper_boost_y)
 
@@ -409,11 +408,11 @@ class GameLoop:
         elif "ULTRA" in active_tech:
             active_tech, modifiers_list, chain_len = get_tech_modifiers(active_tech)
 
-            extension = 0.25 if "EXTENDED" in modifiers_list else 0
+            extension = 0.35 if "EXTENDED" in modifiers_list else 0
             chain_mult = 1 + 1.10 * chain_len
 
             ultra_mult_x = (1.50 + extension) * chain_mult
-            ultra_mult_y = 1.25 * chain_mult
+            ultra_mult_y = 1.30 * chain_mult
             ultra_mult = (ultra_mult_x, ultra_mult_y)
 
             curr_player.speed = multiply_velocity(curr_player.speed, ultra_mult)
@@ -425,18 +424,18 @@ class GameLoop:
             plr_dir_x, plr_dir_y = get_vector_direction(curr_player.speed)
             plr_dir_x = 1 if plr_dir_x == 0 else plr_dir_x
 
-            extension = 0.25 if "EXTENDED" in modifiers_list else 0
-            high_jump = 0.75 if "HIGH-JUMP" in modifiers_list else 0
+            extension = 0.35 if "EXTENDED" in modifiers_list else 0
+            high_jump = 0.65 if "HIGH-JUMP" in modifiers_list else 0
             chain_mult = 1 + 1.10 * chain_len
 
             b_hop_boost_x = (plr_dir_x * (12 + extension)) * chain_mult
-            b_hop_boost_y = (3.5 + high_jump) * chain_mult
+            b_hop_boost_y = (3.5 + high_jump + extension) * chain_mult
             b_hop_boost = (b_hop_boost_x, b_hop_boost_y)
 
             curr_player.speed = add_velocity(curr_player.speed, b_hop_boost)
             print(f" - {curr_player.name}'s speed has been influenced via a b-hop active tech")
             curr_player.transfer_active_tech()
-            velocity_modifier /= 1.20
+            velocity_modifier /= 1.25
 
         elif "FALL-BOOST" in active_tech:
             active_tech, modifiers_list, chain_len = get_tech_modifiers(active_tech)
@@ -448,7 +447,7 @@ class GameLoop:
             chain_mult = 1 + 1.10 * chain_len
 
             fall_boost_x = plr_dir_x * 3.5 * chain_mult
-            fall_boost_y = (-25 * slow_fall * fast_fall) * chain_mult
+            fall_boost_y = (-30 * slow_fall * fast_fall) * chain_mult
             fall_boost = (fall_boost_x, fall_boost_y)
 
             curr_player.speed = add_velocity(curr_player.speed, fall_boost)
@@ -468,12 +467,12 @@ class GameLoop:
             plr_dir_x, plr_dir_y = get_vector_direction(curr_player.speed)
             plr_dir_x *= -1  # inverting, BOUNCE-BOOST decreases horizontal speed
 
-            extension = 0.50 if "EXTENDED" in modifiers_list else 0
+            extension = 0.65 if "EXTENDED" in modifiers_list else 0
             high_jump = 0.75 if "HIGH-JUMP" in modifiers_list else 0
             chain_mult = 1 + 1.10 * chain_len
 
-            bounce_boost_x = plr_dir_x * 3.5 * chain_mult
-            bounce_boost_y = 20 * (1 + extension + high_jump) * chain_mult
+            bounce_boost_x = plr_dir_x * (3.5 - extension) * chain_mult
+            bounce_boost_y = 25 * (1 + extension + high_jump) * chain_mult
             bounce_boost = (bounce_boost_x, bounce_boost_y)
 
             curr_player.speed = add_velocity(curr_player.speed, bounce_boost)
@@ -566,7 +565,6 @@ def print_movement_table():
     console.print(move_table)
 
 # ── Attacking Functions ──────────────────────────────
-# TODO : Implement speed having an effect on damage as well as passive and active tech influence
 def evaluate_card(used_card: Card, curr_player: Player, stack_apply: bool = False):
     weakness_used = False
     strength_used = False
