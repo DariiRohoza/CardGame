@@ -183,8 +183,6 @@ class GameLoop:
         value, weakness_used, strength_used = evaluate_card(chosen_card, curr_player)
         evaluate_multipliers(curr_player, weakness_used, strength_used)
 
-        print(curr_player.passive_tech)
-
         matched_keys = get_player_passive(curr_player, "SUPER")
         if not matched_keys:
             matched_keys = get_player_passive(curr_player, "HYPER")
@@ -289,19 +287,18 @@ class GameLoop:
         user_card_2nd = card_choosing(curr_hand)
         curr_hand.remove(user_card_2nd)
 
-        if STYLE_LIB[user_card_1st.style] > STYLE_LIB[user_card_2nd.style]:
-            merged_style = user_card_1st.style
-        else:
-            merged_style = user_card_2nd.style
-
         rank_change = 0
-
         if user_card_1st.suit != user_card_2nd.suit:
             rank_change += SUIT_PENALTY
             print(f" - Applied suit penalty to the result ({SUIT_PENALTY})")
         elif user_card_2nd.suit == user_card_1st.suit and user_card_2nd.rank == user_card_1st.rank:
             rank_change += IDENTICAL_BOOST
             print(f" - Applied identicality boost to the result ({IDENTICAL_BOOST})")
+
+        if STYLE_LIB[user_card_1st.style] > STYLE_LIB[user_card_2nd.style]:
+            merged_style = user_card_1st.style
+        else:
+            merged_style = user_card_2nd.style
 
         merged_card = Card()
         merged_card.add_info(user_card_1st.suit, user_card_1st.rank + user_card_2nd.rank + rank_change, merged_style)
@@ -637,6 +634,22 @@ def attack_player(used_card: Card, attacker: Player, target: Player):
             print(f" * Attacker passive tech increased damage (tech: {full_tech} multiplier: {mult:,.2f})")
             del attacker.passive_tech[tech]
 
+        matched_keys = get_player_passive(target, "FALL-BOOST")
+        if matched_keys:
+            tech, chain = matched_keys[0]
+            full_tech = tech + " \\ " + chain if chain != "" else tech
+            passive_tech, modifiers_list, chain_len = get_tech_modifiers(full_tech)
+
+            slow_fall = 0.03 if "SLOW-FALL" in modifiers_list else 0
+            fast_fall = 0.05 if "FAST-FALL" in modifiers_list else 0
+            chain_mult = 1 + 0.5 * chain_len
+
+            mult = 1 + (slow_fall - fast_fall) * chain_mult
+            damage *= mult
+
+            print(f" * Target passive tech changed damage (tech: {full_tech} multiplier: {mult:,.2f})")
+            del target.passive_tech[tech]
+
         if 0 < target.defending:
             damage *= 0.90 ** target.defending
             print(f" * Nullified 1 target defense stack")
@@ -679,7 +692,7 @@ def attack_player(used_card: Card, attacker: Player, target: Player):
 
 # ── Movement Functions ──────────────────────────────
 def chunk_split_movement(movement: list[str]) -> list[tuple]:
-    max_tech_len = max(len(key) for key in MOVEMENT_TECH_LIB)
+    max_tech_len = max(len(key) for key in MOVEMENT_TECH_LIB.keys())
     movement_chunks = []
     i = 0
     while i < len(movement):
