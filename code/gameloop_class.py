@@ -3,18 +3,19 @@ from rich.console import Console
 from rich.table import Table
 
 from math import tanh, cosh
-
 from pyfiglet import figlet_format
+from time import sleep
 
 from card_class import Card
 from deck_class import Deck
 from player_class import Player
 from constants_libraries import (STYLE_LIB, SUIT_LIB, MOVEMENT_LIB, MOVEMENT_TECH_LIB,
-                                 MAX_ACTIVE_TECH_LEN, CARD_PRINT, PLAYER_PRINT, MOVEMENT_PRINT,
+                                 CARD_PRINT, PLAYER_PRINT, MOVEMENT_PRINT, ACTION_MULTIPLIER,
                                  MIN_GENERATED_CARD_RANK, MIN_GAME_PLAYERS, MAX_GAME_PLAYERS, PLAYER_HAND_SIZE,
-                                 STACK_RANK_LIMIT, SUIT_PENALTY, IDENTICAL_BOOST,
+                                 STACK_RANK_LIMIT, PARRY_LONGEVITY, SUIT_PENALTY, IDENTICAL_BOOST,
                                  MIN_MOVE, SPEED_IMPACT, VELOCITY_DECAY_X, VELOCITY_DECAY_Y,
                                  DEFENSE_STRENGTH_LIM, DEFENSE_WEAKNESS_LIM, DEFENSE_THRESHOLD, MIN_WEAKNESS_CRITICAL)
+
 
 class GameLoop:
     def __init__(self):
@@ -51,6 +52,7 @@ class GameLoop:
 
     def main_loop(self):
         while not self.conclude_game:
+            sleep(0.35)
             velocity_modifier = 1
             no_decay = False
             if len(self.deck) == 0:
@@ -64,6 +66,7 @@ class GameLoop:
                   f"Pick an options from those below by inputting the number in front of it\n"
                   f"01 : Attack Player\n"
                   f"11 : Stack Attack Value\n"
+                  f"12 : Start a Parry\n"
                   f"02 : View Other Players\n"
                   f"03 : View Hand\n"
                   f"04 : Refurbish Card Suit\n"
@@ -80,6 +83,7 @@ class GameLoop:
             match user_choice_option:
                 case "1": self.attack_turn(curr_player, curr_hand)
                 case "11": self.stack_attack_value(curr_player, curr_hand)
+                case "12": self.player_parry(curr_player, curr_hand)
                 case "2": print_players(self.player_list, curr_player)
                 case "3": print_hand(curr_player, curr_hand)
                 case "4": self.refurbish_card_suit(curr_player, curr_hand)
@@ -99,6 +103,14 @@ class GameLoop:
             if curr_player.speed_value() > 0 and self.action_counter == 0 and not no_decay:
                 apply_velocity_decay(curr_player, velocity_modifier, velocity_modifier)
                 print(f">>> Applied velocity decay to {curr_player.name}\n")
+
+            if curr_player.parry_time > 0 and self.action_counter == 0:
+                curr_player.parry_time -= 1
+
+            if curr_player.parry_time == 0 and curr_player.parry_card is not None:
+                parry_card = curr_player.parry_card
+                curr_player.parry_card = None
+                print(f" - {curr_player.name}'s parry card expired : {parry_card}\n")
 
     # ── MainLoop Util / Helper Functions ──────────────────────────────
     def iterate_turn(self):
@@ -189,7 +201,7 @@ class GameLoop:
 
         if matched_keys:
             tech, chain = matched_keys[0]
-            full_tech = tech + " \\ " + chain if chain != "" else tech
+            full_tech = tech + chain if chain != "" else tech
             passive_tech, modifiers_list, chain_len = get_tech_modifiers(full_tech)
 
             extension = 1 if "EXTENDED" in modifiers_list else 0
@@ -205,6 +217,30 @@ class GameLoop:
         print(f" - Increased {curr_player.name} attack stack by {value} (total change: {value + tech_bonus:,.2f})\n")
 
         curr_hand.append(self.deck.draw_card())
+        self.iterate_turn()
+        return True
+
+    def player_parry(self, curr_player: Player, curr_hand: list[Card]) -> bool:
+        print(f"Pick a card to be used as a parry against the next attack against you"
+              f"The parry will expire after {PARRY_LONGEVITY} turns\n")
+        if curr_player.parry_card is not None:
+            print(f" - You already have a parry card set, it will be returned to your hand if you continue")
+            if input(f"Input \"return\" if you wish to go back: ").lower() == "return":
+                return False
+
+        print_hand(curr_player, curr_hand)
+        user_card = card_choosing(curr_hand)
+        curr_hand.remove(user_card)
+
+        if curr_player.parry_card is not None:
+            curr_hand.append(curr_player.parry_card)
+            print(f" - {curr_player.name}'s parry card changed : {curr_player.parry_card} -> {user_card}\n")
+        else:
+            curr_hand.append(self.deck.draw_card())
+            print(f" - {curr_player.name} gained a parry card : {user_card}\n")
+
+        curr_player.parry_card = user_card
+        curr_player.parry_time = PARRY_LONGEVITY
         self.iterate_turn()
         return True
 
@@ -327,6 +363,7 @@ class GameLoop:
         curr_hand.append(new_card)
         self.iterate_turn()
 
+    # TODO : B-HOP PASSIVE AFFECTS DISCARD ACTION
     def drop_half_cards(self, curr_player: Player, curr_hand: list[Card]):
         cards_removed = len(curr_hand) // 2
         for i in range(cards_removed):
@@ -340,6 +377,7 @@ class GameLoop:
         print(f"{cards_removed} new cards have been added to your hand\n")
         self.iterate_turn()
 
+    # TODO : B-HOP PASSIVE AFFECTS DEFEND ACTION
     def defend(self, curr_player: Player, def_stacks: int):
         curr_player.defending += def_stacks
         print(f"{curr_player.name} has gained {def_stacks} stack(s) of defense\n")
@@ -487,6 +525,7 @@ class GameLoop:
         self.iterate_turn()
         return velocity_modifier
 
+
 # ── Table Printing Functions ──────────────────────────────
 def print_hand(curr_player: Player | None = None, curr_hand: list[Card] | None = None) -> bool:
     if curr_player is None or curr_hand is None:
@@ -510,32 +549,20 @@ def print_players(player_list: list[Player], curr_player: Player | None = None) 
         return False
 
     player_table = Table(caption=f"The players", box=box.ROUNDED)
-    active_tech_len = max(len(plr.active_tech) for plr in player_list) + 2
-    cut_movement_tech = False
     for item in PLAYER_PRINT:
-        if item[0] != "Move Tech":
-            player_table.add_column(item[0], min_width=item[1], justify="center", no_wrap=True)
-            continue
-        if active_tech_len <= MAX_ACTIVE_TECH_LEN:
-            player_table.add_column(item[0], min_width=active_tech_len, justify="center", no_wrap=True)
-            continue
         player_table.add_column(item[0], min_width=item[1], justify="center", no_wrap=True)
-        cut_movement_tech = True
     for idx, plr in enumerate(player_list):
         name, health = plr.name, f"{plr.health:,.2f}"
         defense, attack_stack = str(plr.defending), f"{plr.attack_stack:,.2f}"
-        actions, speed, active_tech = str(plr.action_count), plr.speed_value(), plr.active_tech
+        actions, speed = str(plr.action_count), plr.speed_value()
         weakness, strength = plr.weakness, plr.strength
 
-        if active_tech == "": active_tech = "None"
         if weakness == "": weakness = "None"
         if strength == "": strength = "None"
-        if cut_movement_tech and len(active_tech) > MAX_ACTIVE_TECH_LEN:
-            active_tech = active_tech[:MAX_ACTIVE_TECH_LEN - 3] + "..."
         you = "You" if curr_player == plr else "N/A"
 
         player_table.add_row(str(idx), name, health, defense, attack_stack, actions,
-                             f"{speed:,.2f} m/s", active_tech, weakness, strength, you)
+                             f"{speed:,.2f} m/s", weakness, strength, you)
 
     console = Console(force_terminal=True, color_system="truecolor", width=200)
     console.print(player_table)
@@ -620,10 +647,39 @@ def attack_player(used_card: Card, attacker: Player, target: Player):
             damage *= mult_y
             print(f" * Movement direction of both players affected damage (x: {mult_x:,.2f}, y: {mult_y:,.2f})")
 
+        if target.parry_card is not None:
+            value, weakness_used, strength_used = evaluate_card(target.parry_card, target)
+            evaluate_multipliers(target, weakness_used, strength_used)
+
+            matched_keys = get_player_passive(attacker, "BOUNCE-BOOST")
+            if matched_keys:
+                tech, chain = matched_keys[0]
+                full_tech = tech + chain if chain != "" else tech
+                passive_tech, modifiers_list, chain_len = get_tech_modifiers(full_tech)
+
+                extension = 1.40 if "EXTENDED" in modifiers_list else 1
+                high_jump = 1.30 if "HIGH-JUMP" in modifiers_list else 1
+                chain_mult = 1 + 0.20 * chain_len
+
+                mult = 2 * high_jump * extension * chain_mult
+                value /= mult
+                print(f" * Attacker passive tech decreased parry effectiveness (tech: {full_tech} multiplier: {mult:,.2f})")
+                del attacker.passive_tech[tech]
+
+            target.parry_time = 0
+            target.parry_card = None
+            damage -= value
+            print(f" * Target parry card decreased attacker damage ({value:,.2f})")
+            apply_velocity_decay(attacker,
+                0.13 * speed_modifier * ACTION_MULTIPLIER,
+                0.13 * speed_modifier * ACTION_MULTIPLIER
+            )
+            print(f" * Target parry decreased attacker speed")
+
         matched_keys = get_player_passive(attacker, "ULTRA")
         if matched_keys:
             tech, chain = matched_keys[0]
-            full_tech = tech + " \\ " + chain if chain != "" else tech
+            full_tech = tech + chain if chain != "" else tech
             passive_tech, modifiers_list, chain_len = get_tech_modifiers(full_tech)
 
             extension = 0.25 if "EXTENDED" in modifiers_list else 0
@@ -637,7 +693,7 @@ def attack_player(used_card: Card, attacker: Player, target: Player):
         matched_keys = get_player_passive(target, "FALL-BOOST")
         if matched_keys:
             tech, chain = matched_keys[0]
-            full_tech = tech + " \\ " + chain if chain != "" else tech
+            full_tech = tech + chain if chain != "" else tech
             passive_tech, modifiers_list, chain_len = get_tech_modifiers(full_tech)
 
             slow_fall = 0.03 if "SLOW-FALL" in modifiers_list else 0
@@ -646,7 +702,6 @@ def attack_player(used_card: Card, attacker: Player, target: Player):
 
             mult = 1 + (slow_fall - fast_fall) * chain_mult
             damage *= mult
-
             print(f" * Target passive tech changed damage (tech: {full_tech} multiplier: {mult:,.2f})")
             del target.passive_tech[tech]
 
@@ -678,7 +733,10 @@ def attack_player(used_card: Card, attacker: Player, target: Player):
             damage *= 0.83 # 5/6 : reducing 1.5x to 1.25x attacker strength impact
             print(f" * Reduced attacker strength scaling")
 
-        apply_velocity_decay(target, 0.2, 0.2)
+        apply_velocity_decay(target,
+            0.30 * speed_modifier * ACTION_MULTIPLIER,
+            0.30 * speed_modifier * ACTION_MULTIPLIER
+        )
 
     evaluate_multipliers(attacker, weakness_used, strength_used)
     if damage > 0:

@@ -1,12 +1,18 @@
+from typing import Optional
+
 from card_class import Card
 from constants_libraries import MOVEMENT_TECH_LIB, START_PLAYER_HEALTH, ACTION_AMOUNT, INITIAL_SPEED
 
+
 class Player:
     def __init__(self):
-        # hand | passive_tech : are not shown
+        # hand | parry_card | active_tech | passive_tech : are not shown
         self.name: str = "PLACEHOLDER"
         self.hand: list[Card] = []
         self.health: float = START_PLAYER_HEALTH
+
+        self.parry_card: Optional[Card] = None
+        self.parry_time: int = 0
 
         self.defending: int = 0
         self.attack_stack: float = 0

@@ -48,3 +48,7 @@ Assuming you have already been able to launch the game, follow these steps:
 | MIN_WEAKNESS_CRITICAL   | Minimum additional defense stacks removed from the target if the attacking card has the same suit as the target's weakness.                                                                                       |
 
 Do not change the variables above the ACTION_MULTIPLIER unless you know what you're doing, it is key those stay the way they are.
+
+## Future Plans
+
+1. Replace a main deck with an individual deck for every player, with used cards being appended to the end of the player's deck.
