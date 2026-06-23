@@ -2,7 +2,7 @@ from rich import box
 from rich.console import Console
 from rich.table import Table
 
-from math import tanh, cosh
+from math import tanh, cosh, ceil
 from pyfiglet import figlet_format
 from time import sleep
 
@@ -40,7 +40,6 @@ class GameLoop:
                     item.hand.append(self.deck.draw_card())
 
     def add_player(self, new_player: Player):
-        # Checking conditions
         if len(self.deck) != 0:
             print(f"Deck has been initialized, can't add more players, skipping...")
         elif len(self.player_list) == MAX_GAME_PLAYERS:
@@ -363,22 +362,63 @@ class GameLoop:
         curr_hand.append(new_card)
         self.iterate_turn()
 
-    # TODO : B-HOP PASSIVE AFFECTS DISCARD ACTION
-    def drop_half_cards(self, curr_player: Player, curr_hand: list[Card]):
+    def drop_half_cards(self, curr_player: Player, curr_hand: list[Card]) -> bool:
         cards_removed = len(curr_hand) // 2
+        modified: bool = False
+        matched_keys = get_player_passive(curr_player, "B-HOP")
+        if matched_keys:
+            tech, chain = matched_keys[0]
+            full_tech = tech + chain if chain != "" else tech
+            passive_tech, modifiers_list, chain_len = get_tech_modifiers(full_tech)
+
+            extension = 0.80 if "EXTENDED" in modifiers_list else 0
+            high_jump = 1.35 if "HIGH-JUMP" in modifiers_list else 1
+            chain_mult = 1 + 1.20 * chain_len
+
+            drop_bonus = ceil(chain_mult * high_jump + extension)
+            cards_removed += drop_bonus
+            if drop_bonus >= 1:
+                print(f" - {curr_player.name}'s passive tech increased dropped cards count and modified the drop cards action "
+                      f"(tech: {full_tech} bonus: {drop_bonus:,.2f})")
+                modified = True
+                del curr_player.passive_tech[tech]
+
         for i in range(cards_removed):
             print(f"Choose a card to remove ({i}/{cards_removed} removed already)")
             print_hand(curr_player, curr_hand)
             user_card = card_choosing(curr_hand)
             curr_hand.remove(user_card)
+            if modified:
+                curr_hand.append(self.deck.draw_card())
+                print(f" - New card added to hand")
+                if input("To stop dropping cards type \"stop\": ").lower():
+                    break
 
-        for _ in range(cards_removed):
-            curr_hand.append(self.deck.draw_card())
-        print(f"{cards_removed} new cards have been added to your hand\n")
+        if not modified:
+            for _ in range(cards_removed):
+                curr_hand.append(self.deck.draw_card())
+            print(f"{cards_removed} new cards have been added to your hand\n")
         self.iterate_turn()
+        return False
 
-    # TODO : B-HOP PASSIVE AFFECTS DEFEND ACTION
     def defend(self, curr_player: Player, def_stacks: int):
+        matched_keys = get_player_passive(curr_player, "B-HOP")
+        if matched_keys:
+            tech, chain = matched_keys[0]
+            full_tech = tech + chain if chain != "" else tech
+            passive_tech, modifiers_list, chain_len = get_tech_modifiers(full_tech)
+
+            extension = 0.80 if "EXTENDED" in modifiers_list else 0
+            high_jump = 1.35 if "HIGH-JUMP" in modifiers_list else 1
+            chain_mult = 1 + 1.20 * chain_len
+
+            def_bonus = ceil(chain_mult * high_jump + extension)
+            def_stacks += def_bonus
+            if def_bonus >= 1:
+                print(f" - {curr_player.name}'s passive tech increased defense stacks gained "
+                      f"(tech: {full_tech} bonus: {def_bonus:,.2f})")
+                del curr_player.passive_tech[tech]
+
         curr_player.defending += def_stacks
         print(f"{curr_player.name} has gained {def_stacks} stack(s) of defense\n")
         self.iterate_turn()
