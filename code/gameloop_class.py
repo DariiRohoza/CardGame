@@ -1,20 +1,19 @@
-from rich import box
-from rich.console import Console
-from rich.table import Table
-
-from math import tanh, cosh, ceil
 from pyfiglet import figlet_format
 from time import sleep
+
+from attack_func import evaluate_card, evaluate_multipliers, attack_player
+from movement_func import chunk_split_movement, evaluate_movement_chunks, evaluate_tech_list, get_tech_modifiers, get_player_passive
+from passive_tech import super_hyper_passive_tech, bhop_passive_tech
+from printing_func import print_hand, print_players, print_movement_table
+from vector2_func import vector2_add, vector2_mult, vector2_dir, vector2_decay
 
 from card_class import Card
 from deck_class import Deck
 from player_class import Player
-from constants_libraries import (STYLE_LIB, SUIT_LIB, MARK_LIB, MOVEMENT_LIB, MOVEMENT_TECH_LIB, TECH_SPEED_LIB,
-                                 CARD_PRINT, PLAYER_PRINT, MOVEMENT_PRINT, ACTION_MULTIPLIER,
+from constants_libraries import (STYLE_LIB, SUIT_LIB, MOVEMENT_LIB, TECH_SPEED_LIB,
                                  MIN_GENERATED_CARD_RANK, MIN_GAME_PLAYERS, MAX_GAME_PLAYERS, PLAYER_HAND_SIZE,
-                                 STACK_RANK_LIMIT, PARRY_LONGEVITY, SUIT_PENALTY, IDENTICAL_BOOST,
-                                 MIN_MOVE, SPEED_IMPACT, VELOCITY_DECAY_X, VELOCITY_DECAY_Y,
-                                 DEFENSE_STRENGTH_LIM, DEFENSE_WEAKNESS_LIM, DEFENSE_THRESHOLD, MIN_WEAKNESS_CRITICAL)
+                                 STACK_RANK_LIMIT, PARRY_LONGEVITY, SUIT_PENALTY, IDENTICAL_BOOST, MIN_MOVE, SPEED_IMPACT)
+
 
 class GameLoop:
     def __init__(self):
@@ -175,7 +174,6 @@ class GameLoop:
         self.iterate_turn()
 
     def stack_attack_value(self, curr_player: Player, curr_hand: list[Card]) -> bool:
-        tech_bonus = 0
         filter_hand = []
         for item in curr_hand:
             if item.rank <= STACK_RANK_LIMIT:
@@ -198,21 +196,11 @@ class GameLoop:
             matched_keys = get_player_passive(curr_player, "HYPER")
 
         if matched_keys:
-            tech, chain = matched_keys[0]
-            full_tech = tech + chain if chain != "" else tech
-            passive_tech, modifiers_list, chain_len = get_tech_modifiers(full_tech)
+            tech_bonus = super_hyper_passive_tech(curr_player, matched_keys)
+            value += tech_bonus
 
-            extension = 1 if "EXTENDED" in modifiers_list else 0
-            slide = 1.3 if "SLIDE" in modifiers_list else 1
-            chain_mult = 1 + 1.10 * chain_len
-
-            tech_bonus = (1 + extension) * chain_mult * slide
-            print(f" - {curr_player.name}'s passive tech increased attack stack"
-                  f"(tech: {full_tech} bonus: {tech_bonus:,.2f})")
-            del curr_player.passive_tech[tech]
-
-        curr_player.attack_stack += value + tech_bonus
-        print(f" - Increased {curr_player.name} attack stack by {value} (total change: {value + tech_bonus:,.2f})\n")
+        curr_player.attack_stack += value
+        print(f" - Increased {curr_player.name} attack stack by {value:,.2f}\n")
 
         curr_hand.append(self.deck.draw_card())
         self.iterate_turn()
@@ -366,21 +354,9 @@ class GameLoop:
         modified: bool = False
         matched_keys = get_player_passive(curr_player, "B-HOP")
         if matched_keys:
-            tech, chain = matched_keys[0]
-            full_tech = tech + chain if chain != "" else tech
-            passive_tech, modifiers_list, chain_len = get_tech_modifiers(full_tech)
-
-            extension = 0.80 if "EXTENDED" in modifiers_list else 0
-            high_jump = 1.35 if "HIGH-JUMP" in modifiers_list else 1
-            chain_mult = 1 + 1.20 * chain_len
-
-            drop_bonus = ceil(chain_mult * high_jump + extension)
-            cards_removed += drop_bonus
+            drop_bonus = bhop_passive_tech(curr_player, matched_keys, "drop_half_cards")
             if drop_bonus >= 1:
-                print(f" - {curr_player.name}'s passive tech increased dropped cards count and modified the drop cards action "
-                      f"(tech: {full_tech} bonus: {drop_bonus:,.2f})")
                 modified = True
-                del curr_player.passive_tech[tech]
 
         for i in range(cards_removed):
             print(f"Choose a card to remove ({i}/{cards_removed} removed already)")
@@ -403,20 +379,8 @@ class GameLoop:
     def defend(self, curr_player: Player, def_stacks: int):
         matched_keys = get_player_passive(curr_player, "B-HOP")
         if matched_keys:
-            tech, chain = matched_keys[0]
-            full_tech = tech + chain if chain != "" else tech
-            passive_tech, modifiers_list, chain_len = get_tech_modifiers(full_tech)
-
-            extension = 0.80 if "EXTENDED" in modifiers_list else 0
-            high_jump = 1.35 if "HIGH-JUMP" in modifiers_list else 1
-            chain_mult = 1 + 1.20 * chain_len
-
-            def_bonus = ceil(chain_mult * high_jump + extension)
+            def_bonus = bhop_passive_tech(curr_player, matched_keys, "defend")
             def_stacks += def_bonus
-            if def_bonus >= 1:
-                print(f" - {curr_player.name}'s passive tech increased defense stacks gained "
-                      f"(tech: {full_tech} bonus: {def_bonus:,.2f})")
-                del curr_player.passive_tech[tech]
 
         curr_player.defending += def_stacks
         print(f"{curr_player.name} has gained {def_stacks} stack(s) of defense\n")
@@ -570,322 +534,10 @@ class GameLoop:
         self.iterate_turn()
         return velocity_modifier
 
-
-# ── Table Printing Functions ──────────────────────────────
-def print_hand(curr_player: Player | None = None, curr_hand: list[Card] | None = None) -> bool:
-    if curr_player is None or curr_hand is None:
-        print(f"No player provided or hand is empty")
-        return False
-
-    card_table = Table(caption=f"{curr_player.name}'s cards", box=box.ROUNDED)
-    for item in CARD_PRINT:
-        card_table.add_column(item[0], min_width=item[1], justify="center", no_wrap=True)
-    for idx, item in enumerate(curr_hand):
-        style, suit_rank = item.style, str(item.rank) + str(SUIT_LIB[item.suit])
-        card_table.add_row(str(idx), style, suit_rank)
-
-    console = Console(force_terminal=True, color_system="truecolor", width=150)
-    console.print(card_table)
-    return True
-
-def print_players(player_list: list[Player], curr_player: Player | None = None) -> bool:
-    if len(player_list) == 0:
-        print(f"Not enough players to print!")
-        return False
-
-    player_table = Table(caption=f"The players", box=box.ROUNDED)
-    for item in PLAYER_PRINT:
-        player_table.add_column(item[0], min_width=item[1], justify="center", no_wrap=True)
-    for idx, plr in enumerate(player_list):
-        name, health = plr.name, f"{plr.health:,.2f}"
-        defense, attack_stack = str(plr.defending), f"{plr.attack_stack:,.2f}"
-        actions, speed = str(plr.action_count), plr.speed_value()
-        weakness, strength = plr.weakness, plr.strength
-
-        if weakness == "": weakness = "None"
-        if strength == "": strength = "None"
-        you = "You" if curr_player == plr else "N/A"
-
-        player_table.add_row(str(idx), name, health, defense, attack_stack, actions,
-                             f"{speed:,.2f} m/s", weakness, strength, you)
-
-    console = Console(force_terminal=True, color_system="truecolor", width=200)
-    console.print(player_table)
-    return True
-
-def print_movement_table():
-    move_table = Table(caption=f"Moves", box=box.ROUNDED)
-    for item in MOVEMENT_PRINT:
-        move_table.add_column(item[0], min_width=item[1], justify="center", no_wrap=True)
-    idx = 0
-    for key, val in MOVEMENT_LIB.items():
-        if type(val[1]) is str:
-            move_possibility = val[1]
-        else:
-            move_possibility = ""
-            for item in val[1]:
-                move_possibility += item
-                move_possibility += " OR " if item is not val[1][-1] else ""
-        move_table.add_row(str(idx), f"{key}", f"{val[0]}", f"{move_possibility}")
-        idx += 1
-
-    console = Console(force_terminal=True, color_system="truecolor", width=150)
-    console.print(move_table)
-
-# ── Attacking Functions ──────────────────────────────
-def evaluate_card(used_card: Card, curr_player: Player, stack_apply: bool = False):
-    weakness_used = False
-    strength_used = False
-
-    card_suit, card_rank, card_style = used_card.suit, used_card.rank, used_card.style
-    value = float(card_rank)
-    value += curr_player.attack_stack if stack_apply else 0
-    value *= STYLE_LIB[card_style]
-    if curr_player.weakness == SUIT_LIB[card_suit]:
-        value *= 0.75
-        print(f" * Used {curr_player.name} weakness ({curr_player.weakness})")
-        weakness_used = True
-    if curr_player.strength == SUIT_LIB[card_suit]:
-        value *= 1.50
-        print(f" * Used {curr_player.name} strength ({curr_player.strength})")
-        strength_used = True
-
-    return value, weakness_used, strength_used
-
-def evaluate_multipliers(curr_player: Player, weakness_used: bool, strength_used: bool):
-    if weakness_used:
-        curr_player.weakness = ""
-    if strength_used:
-        curr_player.strength = ""
-
-def attack_player(used_card: Card, attacker: Player, target: Player):
-    defending_bool = False
-    weakness_bool = False
-
-    card_suit, card_rank, card_style = used_card.suit, used_card.rank, used_card.style
-    damage, weakness_used, strength_used = evaluate_card(used_card, attacker, True)
-
-    if attacker.attack_stack > 0:
-        attacker.attack_stack = 0
-        print(f" * Used attacker damage stack to amplify damage")
-
-    if DEFENSE_THRESHOLD <= target.defending:
-        damage = 0
-        remaining_defense = 1 + (target.defending + 1) // 2
-        print(f" * Nullified all damage taken at the cost of {target.defending - remaining_defense} defense stacks")
-        target.defending = remaining_defense
-
-    else:
-        speed_modifier = 1 + tanh((attacker.speed_value() - target.speed_value()) / (3 * SPEED_IMPACT))
-        if speed_modifier != 1:
-            damage *= speed_modifier
-            print(f" * Attacker and Target speeds modified damage ({speed_modifier:,.2f})")
-        if attacker.speed_value() > 0 and target.speed_value() > 0:
-            target_dir_x, target_dir_y = vector2_dir(target.speed)
-            attacker_dir_x, attacker_dir_y = vector2_dir(attacker.speed)
-            dif_dir_x = target_dir_x + attacker_dir_x
-            dif_dir_y = target_dir_y + attacker_dir_y
-
-            mult_x = 1.05 + (-0.05 * abs(dif_dir_x))
-            mult_y = 1.05 + (-0.05 * abs(dif_dir_y))
-            damage *= mult_x
-            damage *= mult_y
-            print(f" * Movement direction of both players affected damage (x: {mult_x:,.2f}, y: {mult_y:,.2f})")
-
-        if target.parry_card is not None:
-            value, weakness_used, strength_used = evaluate_card(target.parry_card, target)
-            evaluate_multipliers(target, weakness_used, strength_used)
-
-            matched_keys = get_player_passive(attacker, "BOUNCE-BOOST")
-            if matched_keys:
-                tech, chain = matched_keys[0]
-                full_tech = tech + chain if chain != "" else tech
-                passive_tech, modifiers_list, chain_len = get_tech_modifiers(full_tech)
-
-                extension = 1.40 if "EXTENDED" in modifiers_list else 1
-                high_jump = 1.30 if "HIGH-JUMP" in modifiers_list else 1
-                chain_mult = 1 + 0.20 * chain_len
-
-                mult = 2 * high_jump * extension * chain_mult
-                value /= mult
-                print(f" * Attacker passive tech decreased parry effectiveness (tech: {full_tech} multiplier: {mult:,.2f})")
-                del attacker.passive_tech[tech]
-
-            target.parry_time = 0
-            target.parry_card = None
-            damage -= value
-            print(f" * Target parry card decreased attacker damage ({value:,.2f})")
-            vector2_decay(attacker,
-                0.13 * speed_modifier * ACTION_MULTIPLIER,
-                0.13 * speed_modifier * ACTION_MULTIPLIER
-            )
-            print(f" * Target parry decreased attacker speed")
-
-        matched_keys = get_player_passive(attacker, "ULTRA")
-        if matched_keys:
-            tech, chain = matched_keys[0]
-            full_tech = tech + chain if chain != "" else tech
-            passive_tech, modifiers_list, chain_len = get_tech_modifiers(full_tech)
-
-            extension = 0.25 if "EXTENDED" in modifiers_list else 0
-            chain_mult = 0.50 + 0.20 * chain_len
-
-            mult = 1 + extension * chain_mult
-            damage *= mult
-            print(f" * Attacker passive tech increased damage (tech: {full_tech} multiplier: {mult:,.2f})")
-            del attacker.passive_tech[tech]
-
-        matched_keys = get_player_passive(target, "FALL-BOOST")
-        if matched_keys:
-            tech, chain = matched_keys[0]
-            full_tech = tech + chain if chain != "" else tech
-            passive_tech, modifiers_list, chain_len = get_tech_modifiers(full_tech)
-
-            slow_fall = 0.03 if "SLOW-FALL" in modifiers_list else 0
-            fast_fall = 0.05 if "FAST-FALL" in modifiers_list else 0
-            chain_mult = 1 + 0.5 * chain_len
-
-            mult = 1 + (slow_fall - fast_fall) * chain_mult
-            damage *= mult
-            print(f" * Target passive tech changed damage (tech: {full_tech} multiplier: {mult:,.2f})")
-            del target.passive_tech[tech]
-
-        if 0 < target.defending:
-            damage *= 0.90 ** target.defending
-            print(f" * Nullified 1 target defense stack")
-            target.defending -= 1 # defense stacks get removed one by one, but they all impact damage taken
-            defending_bool = True
-
-        if target.weakness == SUIT_LIB[card_suit]:
-            damage *= 1.50
-            print(f" * Target weakness amplified damage ({target.weakness})")
-            weakness_bool = True
-        if target.strength == SUIT_LIB[card_suit]:
-            damage *= 0.75
-            print(f" * Target strength reduced damage ({target.strength})")
-
-        if defending_bool and weakness_bool:
-            # weak_def_crit scales effectiveness of hits targeting weakness with the amount of defense of target
-            weak_def_crit = (target.defending // 3) - 1
-            weak_def_crit = weak_def_crit if MIN_WEAKNESS_CRITICAL < weak_def_crit else MIN_WEAKNESS_CRITICAL
-            target.defending -= weak_def_crit
-            print(f" * Weakness caused target to lose {weak_def_crit} more defense stack(s)")
-
-        if DEFENSE_WEAKNESS_LIM <= target.defending and target.weakness == SUIT_LIB[card_suit]:
-            damage *= 0.66 # 2/3 : completely removing target weakness impact
-            print(f" * Nullified target weakness scaling")
-        if DEFENSE_STRENGTH_LIM <= target.defending and attacker.strength == SUIT_LIB[card_suit]:
-            damage *= 0.83 # 5/6 : reducing 1.5x to 1.25x attacker strength impact
-            print(f" * Reduced attacker strength scaling")
-
-        vector2_decay(target,
-            0.30 * speed_modifier * ACTION_MULTIPLIER,
-            0.30 * speed_modifier * ACTION_MULTIPLIER
-        )
-
-    evaluate_multipliers(attacker, weakness_used, strength_used)
-    if damage > 0:
-        target.health -= damage
-        target.weakness = SUIT_LIB[card_suit]
-        target.strength = SUIT_LIB[(card_suit + 2) % len(SUIT_LIB)]
-        print(f"{target.name}'s health after attacking : {target.health:,.2f}\n"
-              f"{target.name} is now weak to {target.weakness} and strong with {target.strength}\n")
-    else:
-        print(f"{target.name}'s was unaffected by the attack\n")
-
-# ── Movement Functions ──────────────────────────────
-def chunk_split_movement(movement: list[str]) -> list[tuple]:
-    max_tech_len = max(len(key) for key in MOVEMENT_TECH_LIB.keys())
-    movement_chunks = []
-    i = 0
-    while i < len(movement):
-        matched = False
-        for length in range(min(max_tech_len, len(movement) - i), 0, - 1):
-            part = tuple(movement[i: i + length])
-            if part in MOVEMENT_TECH_LIB.keys():
-                movement_chunks.append(part)
-                i += length
-                matched = True
-                break
-        if not matched:
-            movement_chunks.append(tuple(movement[i: i + 1]))
-            i += 1
-    return movement_chunks
-
-def evaluate_movement_chunks(movement_chunks: list[tuple], player: Player) -> list[str]:
-    tech_list = []
-    for chunk in movement_chunks:
-        if chunk in MOVEMENT_TECH_LIB.keys():
-            tech_list.append(MOVEMENT_TECH_LIB[chunk])
-        for move in chunk:
-            move_vector = MOVEMENT_LIB[move][0]
-
-            mv_dir_x, mv_dir_y = vector2_dir(move_vector)
-            plr_dir_x, plr_dir_y = vector2_dir(player.speed)
-            dif_dir_x = mv_dir_x + plr_dir_x
-            dif_dir_y = mv_dir_y + plr_dir_y
-
-            mult_x = (29 / 120) * dif_dir_x ** 3 - (1 / 2) * dif_dir_x ** 2 - (29 / 120) * dif_dir_x + (3 / 2)
-            mult_y = (29 / 120) * dif_dir_y ** 3 - (1 / 2) * dif_dir_y ** 2 - (29 / 120) * dif_dir_y + (3 / 2)
-            move_vector = vector2_mult(move_vector, (mult_x, mult_y))
-
-            player.speed = vector2_add(player.speed, move_vector)
-    return tech_list
-
-def evaluate_tech_list(tech_list: list[str], player: Player):
-    for i in range(len(tech_list)):
-        if tech_list[i] == player.active_tech:
-            player.active_tech += " \\ CHAIN"
-            print(f" <*> CHAIN modifier added to {player.name}'s active tech ({player.active_tech})")
-            continue
-        player.transfer_active_tech(tech_list[i])
-
-def get_tech_modifiers(active_tech: str):
-    active_tech, modifiers_list, chain_len = active_tech, [], 0
-    if " \\ " in active_tech:
-        active_tech, chain = active_tech.split(" \\ ", maxsplit=1)
-        chain_len = len(chain.split(" \\ "))
-    if " : " in active_tech:
-        active_tech, modifiers = active_tech.split(" : ", maxsplit=1)
-        modifiers_list = modifiers.split(" | ")
-    return active_tech, modifiers_list, chain_len
-
-def get_player_passive(player: Player, string: str) -> list[tuple]:
-    matched_keys = [(key, value) for key, value in player.passive_tech.items() if string in key]
-    return matched_keys
-
-# ── Vector Functions ──────────────────────────────
-def vector2_dir(vector): # returns a pair of values, can only be 0, 1 or -1
-    vector_x, vector_y = vector
-    dir_x = (vector_x > 0) - (vector_x < 0)
-    dir_y = (vector_y > 0) - (vector_y < 0)
-    return dir_x, dir_y
-
-def vector2_add(vector1: tuple, vector2: tuple):
-    speed_x = vector1[0] + vector2[0]
-    speed_y = vector1[1] + vector2[1]
-    vector1 = (speed_x, speed_y)
-    return vector1
-
-def vector2_mult(vector1: tuple, vector2: tuple):
-    speed_x = vector1[0] * vector2[0]
-    speed_y = vector1[1] * vector2[1]
-    vector1 = (speed_x, speed_y)
-    return vector1
-
-def vector2_decay(player: Player, vel_dx: float | int = 1, vel_dy: float | int = 1):
-    vel_mult_x = sech((player.speed_value() * vel_dx) / (VELOCITY_DECAY_X * SPEED_IMPACT))
-    vel_mult_y = sech((player.speed_value() * vel_dy) / (VELOCITY_DECAY_Y * SPEED_IMPACT))
-    vel_mult = (vel_mult_x, vel_mult_y)
-    player.speed = vector2_mult(player.speed, vel_mult)
-
 # ── Util / Helper Functions ──────────────────────────────
 def game_winner(winner: Player):
     print(f"The player that has eliminated all the other players and won is!\n",
           figlet_format(f"{winner.name}", font="larry3d"))
-
-def sech(x):
-    return 1 / cosh(x)
 
 def card_choosing(curr_hand: list[Card]) -> Card:
     user_chosen_card = curr_hand[0]
@@ -907,26 +559,3 @@ def card_choosing(curr_hand: list[Card]) -> Card:
             continue
         break
     return user_chosen_card
-
-# used for unpacking MOVEMENT_TECH_LIB
-def unpack_mtl(dct: dict[tuple, str]) -> dict[tuple, str]:
-    unpacked_dct = {}
-    for key in dct.keys():
-        key_symbols: list[str] = [sym for sym in MARK_LIB.keys() if sym in " ".join(key)]
-        if not key_symbols:
-            unpacked_dct[key] = dct[key]
-            continue
-        prev = None
-        for sym in key_symbols:
-            if sym == "<" and prev is not None:
-                sym = prev
-            prev = sym
-            if sym == "*":
-                for item in MARK_LIB[sym]:
-                    joined_key = " ".join(key)
-                    modified_key = tuple(joined_key.replace(sym, item).split(" "))
-                    unpacked_dct[modified_key] = dct[key]
-    return unpacked_dct
-
-
-MOVEMENT_TECH_LIB = unpack_mtl(MOVEMENT_TECH_LIB) # passive unpacking
