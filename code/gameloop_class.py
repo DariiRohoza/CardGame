@@ -9,7 +9,7 @@ from time import sleep
 from card_class import Card
 from deck_class import Deck
 from player_class import Player
-from constants_libraries import (STYLE_LIB, SUIT_LIB, MARK_LIB, MOVEMENT_LIB, MOVEMENT_TECH_LIB,
+from constants_libraries import (STYLE_LIB, SUIT_LIB, MARK_LIB, MOVEMENT_LIB, MOVEMENT_TECH_LIB, TECH_SPEED_LIB,
                                  CARD_PRINT, PLAYER_PRINT, MOVEMENT_PRINT, ACTION_MULTIPLIER,
                                  MIN_GENERATED_CARD_RANK, MIN_GAME_PLAYERS, MAX_GAME_PLAYERS, PLAYER_HAND_SIZE,
                                  STACK_RANK_LIMIT, PARRY_LONGEVITY, SUIT_PENALTY, IDENTICAL_BOOST,
@@ -99,7 +99,7 @@ class GameLoop:
                     no_decay = True
 
             if curr_player.speed_value() > 0 and self.action_counter == 0 and not no_decay:
-                apply_velocity_decay(curr_player, velocity_modifier, velocity_modifier)
+                vector2_decay(curr_player, velocity_modifier, velocity_modifier)
                 print(f">>> Applied velocity decay to {curr_player.name}\n")
 
             if curr_player.parry_time > 0 and self.action_counter == 0:
@@ -459,22 +459,20 @@ class GameLoop:
         active_tech = curr_player.active_tech
         if "SUPER" in curr_player.active_tech or "HYPER" in active_tech:
             active_tech, modifiers_list, chain_len = get_tech_modifiers(active_tech)
-            plr_dir_x, plr_dir_y = get_vector_direction(curr_player.speed)
+            plr_dir_x, plr_dir_y = vector2_dir(curr_player.speed)
             plr_dir_x = 1 if plr_dir_x == 0 else plr_dir_x
 
-            horizontal = 26 if active_tech == "HYPER" else 15
-            vertical = 3 if active_tech == "HYPER" else 9
+            x, y = TECH_SPEED_LIB[active_tech]
 
-            extension = 1.2 if "EXTENDED" in modifiers_list else 1
-            slide = 1.3 if "SLIDE" in modifiers_list else 1
+            extension = 1.45 if "EXTENDED" in modifiers_list else 1
+            slide = 1.55 if "SLIDE" in modifiers_list else 1
             chain_mult = 1 + 1.10 * chain_len
 
-            hyper_boost_x = (plr_dir_x * horizontal * extension * slide) * chain_mult
-            hyper_boost_y = vertical * chain_mult
-
+            hyper_boost_x = x * plr_dir_x * extension * slide * chain_mult
+            hyper_boost_y = y * (extension // 2.4) * chain_mult
             hyper_boost = (hyper_boost_x, hyper_boost_y)
 
-            curr_player.speed = add_velocity(curr_player.speed, hyper_boost)
+            curr_player.speed = vector2_add(curr_player.speed, hyper_boost)
             print(f" - {curr_player.name}'s speed has been influenced via a {active_tech.lower()} active tech")
             curr_player.transfer_active_tech()
             velocity_modifier /= slide
@@ -482,48 +480,54 @@ class GameLoop:
         elif "ULTRA" in active_tech:
             active_tech, modifiers_list, chain_len = get_tech_modifiers(active_tech)
 
-            extension = 0.50 if "EXTENDED" in modifiers_list else 0
+            x, y = TECH_SPEED_LIB[active_tech]
+
+            extension = 2 * 0.50 if "EXTENDED" in modifiers_list else 0
             chain_mult = 1 + 1.10 * chain_len
 
-            ultra_mult_x = (1.50 + extension) * chain_mult
-            ultra_mult_y = 1.30 * chain_mult
+            ultra_mult_x = (x + extension) * chain_mult
+            ultra_mult_y = y * chain_mult
             ultra_mult = (ultra_mult_x, ultra_mult_y)
 
-            curr_player.speed = multiply_velocity(curr_player.speed, ultra_mult)
+            curr_player.speed = vector2_mult(curr_player.speed, ultra_mult)
             print(f" - {curr_player.name}'s speed has been influenced via an ultra active tech")
             curr_player.transfer_active_tech()
 
         elif "B-HOP" in active_tech and curr_player.speed_value() > 0:
             active_tech, modifiers_list, chain_len = get_tech_modifiers(active_tech)
-            plr_dir_x, plr_dir_y = get_vector_direction(curr_player.speed)
+            plr_dir_x, plr_dir_y = vector2_dir(curr_player.speed)
 
-            extension = 0.45 if "EXTENDED" in modifiers_list else 0
-            high_jump = 0.75 if "HIGH-JUMP" in modifiers_list else 0
+            x, y = TECH_SPEED_LIB[active_tech]
+
+            extension = 1.2 if "EXTENDED" in modifiers_list else 1
+            high_jump = 0.85 if "HIGH-JUMP" in modifiers_list else 0
             chain_mult = 1 + 1.10 * chain_len
 
-            b_hop_boost_x = (plr_dir_x * (12 + extension)) * chain_mult
-            b_hop_boost_y = (3.5 + high_jump + extension) * chain_mult
+            b_hop_boost_x = x * plr_dir_x * extension * chain_mult
+            b_hop_boost_y = (y + high_jump) * extension * chain_mult
             b_hop_boost = (b_hop_boost_x, b_hop_boost_y)
 
-            curr_player.speed = add_velocity(curr_player.speed, b_hop_boost)
+            curr_player.speed = vector2_add(curr_player.speed, b_hop_boost)
             print(f" - {curr_player.name}'s speed has been influenced via a b-hop active tech")
             curr_player.transfer_active_tech()
             velocity_modifier /= (1.25 + (extension // 3) + (high_jump // 3))
 
         elif "FALL-BOOST" in active_tech:
             active_tech, modifiers_list, chain_len = get_tech_modifiers(active_tech)
-            plr_dir_x, plr_dir_y = get_vector_direction(curr_player.speed)
+            plr_dir_x, plr_dir_y = vector2_dir(curr_player.speed)
             plr_dir_x *= -1 # inverting, FALL-BOOST decreases horizontal speed
 
-            slow_fall = 0.70 if "SLOW-FALL" in modifiers_list else 1
-            fast_fall = 1.40 if "FAST-FALL" in modifiers_list else 1
+            x, y = TECH_SPEED_LIB[active_tech]
+
+            slow_fall = 0.80 if "SLOW-FALL" in modifiers_list else 1
+            fast_fall = 1.50 if "FAST-FALL" in modifiers_list else 1
             chain_mult = 1 + 1.10 * chain_len
 
-            fall_boost_x = plr_dir_x * 3.5 * chain_mult
-            fall_boost_y = (-30 * slow_fall * fast_fall) * chain_mult
+            fall_boost_x = x * plr_dir_x * chain_mult
+            fall_boost_y = y * slow_fall * fast_fall * chain_mult
             fall_boost = (fall_boost_x, fall_boost_y)
 
-            curr_player.speed = add_velocity(curr_player.speed, fall_boost)
+            curr_player.speed = vector2_add(curr_player.speed, fall_boost)
             print(f" - {curr_player.name}'s speed has been influenced via a fall-boost active tech")
             curr_player.transfer_active_tech()
 
@@ -537,18 +541,20 @@ class GameLoop:
 
         elif "BOUNCE-BOOST" in active_tech:
             active_tech, modifiers_list, chain_len = get_tech_modifiers(active_tech)
-            plr_dir_x, plr_dir_y = get_vector_direction(curr_player.speed)
+            plr_dir_x, plr_dir_y = vector2_dir(curr_player.speed)
             plr_dir_x *= -1  # inverting, BOUNCE-BOOST decreases horizontal speed
 
+            x, y = TECH_SPEED_LIB[active_tech]
+
             extension = 0.70 if "EXTENDED" in modifiers_list else 0
-            high_jump = 0.80 if "HIGH-JUMP" in modifiers_list else 0
+            high_jump = 0.85 if "HIGH-JUMP" in modifiers_list else 0
             chain_mult = 1 + 1.10 * chain_len
 
-            bounce_boost_x = plr_dir_x * (3.5 - extension) * chain_mult
-            bounce_boost_y = 25 * (1 + extension + high_jump) * chain_mult
+            bounce_boost_x = (x - extension) * plr_dir_x * chain_mult
+            bounce_boost_y = y * (1 + extension + high_jump) * chain_mult
             bounce_boost = (bounce_boost_x, bounce_boost_y)
 
-            curr_player.speed = add_velocity(curr_player.speed, bounce_boost)
+            curr_player.speed = vector2_add(curr_player.speed, bounce_boost)
             print(f" - {curr_player.name}'s speed has been influenced via a bounce-boost active tech")
             curr_player.transfer_active_tech()
 
@@ -675,8 +681,8 @@ def attack_player(used_card: Card, attacker: Player, target: Player):
             damage *= speed_modifier
             print(f" * Attacker and Target speeds modified damage ({speed_modifier:,.2f})")
         if attacker.speed_value() > 0 and target.speed_value() > 0:
-            target_dir_x, target_dir_y = get_vector_direction(target.speed)
-            attacker_dir_x, attacker_dir_y = get_vector_direction(attacker.speed)
+            target_dir_x, target_dir_y = vector2_dir(target.speed)
+            attacker_dir_x, attacker_dir_y = vector2_dir(attacker.speed)
             dif_dir_x = target_dir_x + attacker_dir_x
             dif_dir_y = target_dir_y + attacker_dir_y
 
@@ -709,7 +715,7 @@ def attack_player(used_card: Card, attacker: Player, target: Player):
             target.parry_card = None
             damage -= value
             print(f" * Target parry card decreased attacker damage ({value:,.2f})")
-            apply_velocity_decay(attacker,
+            vector2_decay(attacker,
                 0.13 * speed_modifier * ACTION_MULTIPLIER,
                 0.13 * speed_modifier * ACTION_MULTIPLIER
             )
@@ -772,7 +778,7 @@ def attack_player(used_card: Card, attacker: Player, target: Player):
             damage *= 0.83 # 5/6 : reducing 1.5x to 1.25x attacker strength impact
             print(f" * Reduced attacker strength scaling")
 
-        apply_velocity_decay(target,
+        vector2_decay(target,
             0.30 * speed_modifier * ACTION_MULTIPLIER,
             0.30 * speed_modifier * ACTION_MULTIPLIER
         )
@@ -814,16 +820,16 @@ def evaluate_movement_chunks(movement_chunks: list[tuple], player: Player) -> li
         for move in chunk:
             move_vector = MOVEMENT_LIB[move][0]
 
-            mv_dir_x, mv_dir_y = get_vector_direction(move_vector)
-            plr_dir_x, plr_dir_y = get_vector_direction(player.speed)
+            mv_dir_x, mv_dir_y = vector2_dir(move_vector)
+            plr_dir_x, plr_dir_y = vector2_dir(player.speed)
             dif_dir_x = mv_dir_x + plr_dir_x
             dif_dir_y = mv_dir_y + plr_dir_y
 
             mult_x = (29 / 120) * dif_dir_x ** 3 - (1 / 2) * dif_dir_x ** 2 - (29 / 120) * dif_dir_x + (3 / 2)
             mult_y = (29 / 120) * dif_dir_y ** 3 - (1 / 2) * dif_dir_y ** 2 - (29 / 120) * dif_dir_y + (3 / 2)
-            move_vector = multiply_velocity(move_vector, (mult_x, mult_y))
+            move_vector = vector2_mult(move_vector, (mult_x, mult_y))
 
-            player.speed = add_velocity(player.speed, move_vector)
+            player.speed = vector2_add(player.speed, move_vector)
     return tech_list
 
 def evaluate_tech_list(tech_list: list[str], player: Player):
@@ -849,29 +855,29 @@ def get_player_passive(player: Player, string: str) -> list[tuple]:
     return matched_keys
 
 # ── Vector Functions ──────────────────────────────
-def get_vector_direction(vector): # returns a pair of values, can only be 0, 1 or -1
+def vector2_dir(vector): # returns a pair of values, can only be 0, 1 or -1
     vector_x, vector_y = vector
     dir_x = (vector_x > 0) - (vector_x < 0)
     dir_y = (vector_y > 0) - (vector_y < 0)
     return dir_x, dir_y
 
-def add_velocity(vector1: tuple, vector2: tuple):
+def vector2_add(vector1: tuple, vector2: tuple):
     speed_x = vector1[0] + vector2[0]
     speed_y = vector1[1] + vector2[1]
     vector1 = (speed_x, speed_y)
     return vector1
 
-def multiply_velocity(vector1: tuple, vector2: tuple):
+def vector2_mult(vector1: tuple, vector2: tuple):
     speed_x = vector1[0] * vector2[0]
     speed_y = vector1[1] * vector2[1]
     vector1 = (speed_x, speed_y)
     return vector1
 
-def apply_velocity_decay(player: Player, vel_dx: float | int = 1, vel_dy: float | int = 1):
+def vector2_decay(player: Player, vel_dx: float | int = 1, vel_dy: float | int = 1):
     vel_mult_x = sech((player.speed_value() * vel_dx) / (VELOCITY_DECAY_X * SPEED_IMPACT))
     vel_mult_y = sech((player.speed_value() * vel_dy) / (VELOCITY_DECAY_Y * SPEED_IMPACT))
     vel_mult = (vel_mult_x, vel_mult_y)
-    player.speed = multiply_velocity(player.speed, vel_mult)
+    player.speed = vector2_mult(player.speed, vel_mult)
 
 # ── Util / Helper Functions ──────────────────────────────
 def game_winner(winner: Player):

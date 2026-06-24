@@ -57,6 +57,15 @@ MOVEMENT_TECH_LIB = {
     ("DASH-DOWN-NONE", "STALL", "DASH-UP-*", "JUMP"): "BOUNCE-BOOST : HIGH-JUMP | EXTENDED",
 }
 
+TECH_SPEED_LIB = {
+    "SUPER" :         (20,   8),
+    "HYPER" :         (26,   3),
+    "ULTRA":          (1.5,  1.3),
+    "B-HOP":          (28,   10),
+    "FALL-BOOST":     (3.5,  -30),
+    "BOUNCE-BOOST":   (3.5,  25)
+}
+
 # table printing
 CARD_PRINT = [("Index", 7), ("Style", 20), ("Rank Suit", 11)]
 PLAYER_PRINT = [("Index", 7), ("Name", 9), ("Health", 8), ("Defense", 9), ("Atk. Stack", 12),
