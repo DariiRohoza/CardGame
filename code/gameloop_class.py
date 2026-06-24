@@ -9,13 +9,12 @@ from time import sleep
 from card_class import Card
 from deck_class import Deck
 from player_class import Player
-from constants_libraries import (STYLE_LIB, SUIT_LIB, MOVEMENT_LIB, MOVEMENT_TECH_LIB,
+from constants_libraries import (STYLE_LIB, SUIT_LIB, MARK_LIB, MOVEMENT_LIB, MOVEMENT_TECH_LIB,
                                  CARD_PRINT, PLAYER_PRINT, MOVEMENT_PRINT, ACTION_MULTIPLIER,
                                  MIN_GENERATED_CARD_RANK, MIN_GAME_PLAYERS, MAX_GAME_PLAYERS, PLAYER_HAND_SIZE,
                                  STACK_RANK_LIMIT, PARRY_LONGEVITY, SUIT_PENALTY, IDENTICAL_BOOST,
                                  MIN_MOVE, SPEED_IMPACT, VELOCITY_DECAY_X, VELOCITY_DECAY_Y,
                                  DEFENSE_STRENGTH_LIM, DEFENSE_WEAKNESS_LIM, DEFENSE_THRESHOLD, MIN_WEAKNESS_CRITICAL)
-
 
 class GameLoop:
     def __init__(self):
@@ -509,7 +508,7 @@ class GameLoop:
             curr_player.speed = add_velocity(curr_player.speed, b_hop_boost)
             print(f" - {curr_player.name}'s speed has been influenced via a b-hop active tech")
             curr_player.transfer_active_tech()
-            velocity_modifier /= (1.25 + extension // 3 + high_jump // 4)
+            velocity_modifier /= (1.25 + (extension // 3) + (high_jump // 3))
 
         elif "FALL-BOOST" in active_tech:
             active_tech, modifiers_list, chain_len = get_tech_modifiers(active_tech)
@@ -902,3 +901,26 @@ def card_choosing(curr_hand: list[Card]) -> Card:
             continue
         break
     return user_chosen_card
+
+# used for unpacking MOVEMENT_TECH_LIB
+def unpack_mtl(dct: dict[tuple, str]) -> dict[tuple, str]:
+    unpacked_dct = {}
+    for key in dct.keys():
+        key_symbols: list[str] = [sym for sym in MARK_LIB.keys() if sym in " ".join(key)]
+        if not key_symbols:
+            unpacked_dct[key] = dct[key]
+            continue
+        prev = None
+        for sym in key_symbols:
+            if sym == "<" and prev is not None:
+                sym = prev
+            prev = sym
+            if sym == "*":
+                for item in MARK_LIB[sym]:
+                    joined_key = " ".join(key)
+                    modified_key = tuple(joined_key.replace(sym, item).split(" "))
+                    unpacked_dct[modified_key] = dct[key]
+    return unpacked_dct
+
+
+MOVEMENT_TECH_LIB = unpack_mtl(MOVEMENT_TECH_LIB) # passive unpacking

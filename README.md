@@ -34,6 +34,7 @@ Assuming you have already been able to launch the game, follow these steps:
 | PLAYER_HAND_SIZE        | Amount of cards a player has access to at a given time, should be smaller than MAX_DECK_SIZE / MAX_GAME_PLAYERS.                                                                                                  |
 |                         |
 | STACK_RANK_LIMIT        | Maximum rank that can be used for the "Stack Attack Value" action.                                                                                                                                                |
+| PARRY_LONGEVITY         | The amount of turns that a parry lasts for, includes the turn the parry was initiated.                                                                                                                            |
 | SUIT_PENALTY            | Penalty that is applied to mergers of cards with different suits.                                                                                                                                                 |
 | IDENTICAL_BOOST         | Bonus added for identical cards during merging.                                                                                                                                                                   |
 |                         |
