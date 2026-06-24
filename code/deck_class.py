@@ -1,7 +1,9 @@
 from random import shuffle, randint, choices
+
 from card_class import Card
 from constants_libraries import (STYLE_LIB, STYLE_LIB_WEIGHTS, SUIT_LIB,
                                  MIN_GENERATED_CARD_RANK, MAX_GENERATED_CARD_RANK, MAX_DECK_SIZE)
+
 
 class Deck:
     def __init__(self):
@@ -28,6 +30,7 @@ class Deck:
         cards_to_add = MAX_DECK_SIZE - len(self.cards)
         for _ in range(cards_to_add):
             self.cards.append(generate_card())
+
 
 def generate_card() -> Card:
     card = Card()
