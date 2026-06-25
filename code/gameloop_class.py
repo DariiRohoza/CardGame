@@ -10,19 +10,16 @@ from printing_func import print_hand, print_players, print_movement_table
 from vector2_func import vector2_add, vector2_mult, vector2_dir, vector2_decay
 
 from card_class import Card
-from deck_class import Deck
 from player_class import Player
 from constants_libraries import (STYLE_LIB, SUIT_LIB, MOVEMENT_LIB, TECH_SPEED_LIB,
-                                 MIN_GENERATED_CARD_RANK, MIN_GAME_PLAYERS, MAX_GAME_PLAYERS, PLAYER_HAND_SIZE,
+                                 MIN_GENERATED_CARD_RANK, MIN_GAME_PLAYERS, MAX_GAME_PLAYERS,
                                  STACK_RANK_LIMIT, PARRY_LONGEVITY, SUIT_PENALTY, IDENTICAL_BOOST, MIN_MOVE, SPEED_IMPACT)
-
 
 class GameLoop:
     def __init__(self):
         self.player_list: list[Player] = []
         self.counter: int = 0
         self.action_counter: int = 0
-        self.deck: Deck = Deck()
         self.conclude_game: bool = False
 
     def __str__(self):
@@ -33,16 +30,11 @@ class GameLoop:
             print(f"Insufficient players, skipping...")
         else:
             print(f"All requirements have been fulfilled, the game is starting...")
-            self.deck.fill()
-
-            for item in self.player_list:
-                for _ in range(PLAYER_HAND_SIZE):
-                    item.hand.append(self.deck.draw_card())
+            for idx, item in enumerate(self.player_list):
+                self.player_list[idx].fill_hand()
 
     def add_player(self, new_player: Player):
-        if len(self.deck) != 0:
-            print(f"Deck has been initialized, can't add more players, skipping...")
-        elif len(self.player_list) == MAX_GAME_PLAYERS:
+        if len(self.player_list) == MAX_GAME_PLAYERS:
             print(f"Player limit reached, can't add more players, skipping...")
         elif new_player.hand:
             print(f"Player hand needs to be empty to be added, skipping...")
@@ -54,12 +46,7 @@ class GameLoop:
             sleep(0.35)
             velocity_modifier = 1
             no_decay = False
-            if len(self.deck) == 0:
-                self.deck.fill()
-                self.deck.shuffle()
-                print(f"--<  Refilled Deck  >--\n")
-
-            curr_player, curr_hand = self.fetch_curr()
+            curr_player = self.fetch_curr()
 
             print(f">>> It is now {curr_player.name}'s turn\n\n"
                   f"Pick an options from those below by inputting the number in front of it\n"
@@ -84,20 +71,20 @@ class GameLoop:
                     if input(f" - Type \"quit\" to stop the program: ").lower() == "quit":
                         self.conclude_game = True
 
-                case 1: self.attack_turn(curr_player, curr_hand)
-                case 2: self.stack_attack_value(curr_player, curr_hand)
-                case 3: self.player_parry(curr_player, curr_hand)
-                case 4: self.refurbish_card_suit(curr_player, curr_hand)
-                case 5: self.increase_card_rank(curr_player, curr_hand)
-                case 6: self.merge_card_rank(curr_player, curr_hand)
-                case 7: self.stylize_card(curr_player, curr_hand)
-                case 8: self.drop_half_cards(curr_player, curr_hand)
+                case 1: self.attack_turn(curr_player)
+                case 2: self.stack_attack_value(curr_player)
+                case 3: self.player_parry(curr_player)
+                case 4: self.refurbish_card_suit(curr_player)
+                case 5: self.increase_card_rank(curr_player)
+                case 6: self.merge_card_rank(curr_player)
+                case 7: self.stylize_card(curr_player)
+                case 8: self.drop_half_cards(curr_player)
                 case 9: self.defend(curr_player, 2)
                 case 10: velocity_modifier = self.move_player(curr_player)
                 case 11: print_players(self.player_list, curr_player)
-                case 12: print_hand(curr_player, curr_hand)
+                case 12: print_hand(curr_player, curr_player.hand)
 
-            if 0 <= user_choice_option <= 10:
+            if 0 < user_choice_option <= 10:
                 self.iterate_turn()
 
             if len(self.player_list) == 1:
@@ -125,40 +112,39 @@ class GameLoop:
             self.action_counter = 0
         self.counter %= len(self.player_list)
 
-    def fetch_curr(self):
-        curr_player = self.player_list[self.counter]
-        curr_hand = curr_player.hand
-        return curr_player, curr_hand
+    def fetch_curr(self) -> Player:
+        return self.player_list[self.counter]
 
     # ── MainLoop SubFunctions ──────────────────────────────
-    def attack_turn(self, curr_player: Player, curr_hand: list[Card]):
-        print(f">>> It is now {curr_player.name}'s attack turn")
+    def attack_turn(self, player: Player):
+        print(f">>> It is now {player.name}'s attack turn")
         print(f" > Pick a card to attack with")
-        user_chosen_card = card_choosing(curr_player, curr_hand)
+        user_chosen_card = card_choosing(player, player.hand)
 
         print(f" > Pick a target for your attack")
-        print_players(self.player_list, curr_player)
+        print_players(self.player_list, player)
         while True:
             target_idx: int = inputInt(prompt="Pick a target player by their index : ", min=0, max=len(self.player_list)-1)
-            user_chosen_target: Player = self.player_list[target_idx]
-            print(f"The target you chose : {user_chosen_target}")
+            target: Player = self.player_list[target_idx]
+            print(f"The target you chose : {target}")
             if input(f"Input \"retry\" if you wish to pick a different target: ").lower() == "retry":
                 continue
             break
 
-        print(f" > {curr_player.name} has decided to attack {user_chosen_target.name} using: {user_chosen_card}")
-        attack_player(user_chosen_card, curr_player, user_chosen_target)
+        print(f" > {player.name} has decided to attack {target.name} using: {user_chosen_card}")
+        attack_player(user_chosen_card, player, target)
 
-        curr_hand.remove(user_chosen_card)
-        curr_hand.append(self.deck.draw_card())
+        player.move_to_deck(user_chosen_card)
+        player.hand.append(player.deck.draw_card())
 
-        if user_chosen_target.health <= 0.00:
-            self.player_list.remove(user_chosen_target)
-            print(f"Player {user_chosen_target.name} has been reduced to 0 or less hit points")
+        if target.health <= 0.00:
+            idx = self.player_list.index(target)
+            self.player_list.pop(idx)
+            print(f"Player {target.name} has been reduced to 0 or less hit points by {player.name}")
 
-    def stack_attack_value(self, curr_player: Player, curr_hand: list[Card]) -> bool:
+    def stack_attack_value(self, player: Player) -> bool:
         filter_hand = []
-        for item in curr_hand:
+        for item in player.hand:
             if item.rank <= STACK_RANK_LIMIT:
                 filter_hand.append(item)
 
@@ -168,54 +154,54 @@ class GameLoop:
             return False
 
         print(f" > Pick a card to stack attack value with")
-        chosen_card = card_choosing(curr_player, filter_hand)
-        curr_hand.remove(chosen_card)
+        chosen_card = card_choosing(player, filter_hand)
+        player.move_to_deck(chosen_card)
 
-        value, weakness_used, strength_used = evaluate_card(chosen_card, curr_player)
-        evaluate_multipliers(curr_player, weakness_used, strength_used)
+        value, weakness_used, strength_used = evaluate_card(chosen_card, player)
+        evaluate_multipliers(player, weakness_used, strength_used)
 
-        matched_keys = get_player_passive(curr_player, "SUPER")
+        matched_keys = get_player_passive(player, "SUPER")
         if not matched_keys:
-            matched_keys = get_player_passive(curr_player, "HYPER")
+            matched_keys = get_player_passive(player, "HYPER")
         if matched_keys:
-            tech_bonus = super_hyper_passive_tech(curr_player, matched_keys)
+            tech_bonus = super_hyper_passive_tech(player, matched_keys)
             value += tech_bonus
 
-        curr_player.attack_stack += value
-        print(f" - Increased {curr_player.name} attack stack by {value:,.2f}\n")
+        player.attack_stack += value
+        print(f" - Increased {player.name} attack stack by {value:,.2f}\n")
 
-        curr_hand.append(self.deck.draw_card())
+        player.hand.append(player.deck.draw_card())
         return True
 
-    def player_parry(self, curr_player: Player, curr_hand: list[Card]) -> bool:
+    def player_parry(self, player: Player) -> bool:
         print(f"Pick a card to be used as a parry against the next attack against you\n"
               f"The parry will expire after {PARRY_LONGEVITY} turns\n")
-        if curr_player.parry_card is not None:
+        if player.parry_card is not None:
             print(f" - You already have a parry card set, it will be returned to your hand if you continue")
             if input(f"Input \"return\" if you wish to go back: ").lower() == "return":
                 return False
 
         print(f" > Pick a card to start a parry with")
-        user_card = card_choosing(curr_player, curr_hand)
-        curr_hand.remove(user_card)
+        user_card = card_choosing(player, player.hand)
+        player.move_to_deck(user_card)
 
-        if curr_player.parry_card is not None:
-            curr_hand.append(curr_player.parry_card)
-            print(f" - {curr_player.name}'s parry card changed : {curr_player.parry_card} -> {user_card}\n")
+        if player.parry_card is not None:
+            player.hand.append(player.parry_card)
+            print(f" - {player.name}'s parry card changed : {player.parry_card} -> {user_card}\n")
         else:
-            curr_hand.append(self.deck.draw_card())
-            print(f" - {curr_player.name} gained a parry card : {user_card}\n")
+            player.hand.append(player.deck.draw_card())
+            print(f" - {player.name} gained a parry card : {user_card}\n")
 
-        curr_player.parry_card = user_card
-        curr_player.parry_time = PARRY_LONGEVITY
+        player.parry_card = user_card
+        player.parry_time = PARRY_LONGEVITY
         return True
 
-    def refurbish_card_suit(self, curr_player: Player, curr_hand: list[Card]):
+    def refurbish_card_suit(self, player: Player):
         print(f" > Pick a card to be refurbished")
-        user_card = card_choosing(curr_player, curr_hand)
-        curr_hand.remove(user_card)
+        user_card = card_choosing(player, player.hand)
+        player.move_to_deck(user_card)
 
-        print(f"> Pick a target suit\n")
+        print(f"> Pick a target suit")
         for key, value in SUIT_LIB.items():
             print(f"{key} : {value}")
         while True:
@@ -231,31 +217,31 @@ class GameLoop:
                 continue
             break
 
-        if curr_player.weakness == SUIT_LIB[chosen_suit]:
-            curr_player.weakness = ""
+        if player.weakness == SUIT_LIB[chosen_suit]:
+            player.weakness = ""
             print(f" - Cured player weakness at no cost")
 
-        curr_player.strength = SUIT_LIB[chosen_suit]
-        print(f" - Granted player strength with the chosen suit ({curr_player.strength})")
+        player.strength = SUIT_LIB[chosen_suit]
+        print(f" - Granted player strength with the chosen suit ({player.strength})")
 
         new_card = Card()
         new_card.add_info(chosen_suit, user_card.rank, user_card.style)
 
         print(f"\n--> Changed suit card: {new_card}\n")
-        curr_hand.append(new_card)
+        player.hand.append(new_card)
 
-    def increase_card_rank(self, curr_player: Player, curr_hand: list[Card]):
+    def increase_card_rank(self, player: Player):
         print(f" > Pick a card to increase rank of")
-        user_card = card_choosing(curr_player, curr_hand)
-        curr_hand.remove(user_card)
+        user_card = card_choosing(player, player.hand)
+        player.move_to_deck(user_card)
 
         rank_change = MIN_GENERATED_CARD_RANK
-        if curr_player.strength == SUIT_LIB[user_card.suit]:
+        if player.strength == SUIT_LIB[user_card.suit]:
             rank_change += 5
-            curr_player.strength = ""
+            player.strength = ""
             print(f" - Nullified player strength for a higher ranked card")
 
-        speed_bonus = 3 * ceil(2 * curr_player.speed_value() // SPEED_IMPACT)
+        speed_bonus = 3 * ceil(2 * player.speed_value() // SPEED_IMPACT)
         if speed_bonus > 0:
             rank_change += speed_bonus
             print(f" - Player speed increased the rank increase by ({speed_bonus})")
@@ -264,19 +250,19 @@ class GameLoop:
         new_card.add_info(user_card.suit, user_card.rank + rank_change, user_card.style)
 
         print(f"\n--> Increased rank card: {new_card}\n")
-        curr_hand.append(new_card)
-        self.defend(curr_player, 1)
+        player.hand.append(new_card)
+        self.defend(player, 1)
 
-    def merge_card_rank(self, curr_player: Player, curr_hand: list[Card]):
+    def merge_card_rank(self, player: Player):
         print(f"If the cards don't have the same suit, a penalty will be applied\n"
               f"If both cards have the same rank and suit, a bonus will be applied\n\n"
               f" > Pick a card to merge")
-        user_card_1st = card_choosing(curr_player, curr_hand)
-        curr_hand.remove(user_card_1st)
+        user_card_1st = card_choosing(player, player.hand)
+        player.move_to_deck(user_card_1st)
 
         print(f" > Pick another card to merge")
-        user_card_2nd = card_choosing(curr_player, curr_hand)
-        curr_hand.remove(user_card_2nd)
+        user_card_2nd = card_choosing(player, player.hand)
+        player.move_to_deck(user_card_2nd)
 
         rank_change = 0
         if user_card_1st.suit != user_card_2nd.suit:
@@ -299,13 +285,13 @@ class GameLoop:
         merged_card.add_info(user_card_1st.suit, final_rank, merged_style)
 
         print(f"\n--> Merged card: {merged_card}\n")
-        curr_hand.append(merged_card)
-        curr_hand.append(self.deck.draw_card())
+        player.hand.append(merged_card)
+        player.hand.append(player.deck.draw_card())
 
-    def stylize_card(self, curr_player: Player, curr_hand: list[Card]):
+    def stylize_card(self, player: Player):
         print(f" > Pick a card to increase style of")
-        user_card = card_choosing(curr_player, curr_hand)
-        curr_hand.remove(user_card)
+        user_card = card_choosing(player, player.hand)
+        player.move_to_deck(user_card)
 
         new_style = user_card.style
         for key, value in STYLE_LIB.items():
@@ -317,46 +303,46 @@ class GameLoop:
         new_card.add_info(user_card.suit, user_card.rank, new_style)
 
         print(f"\n--> Increased style card: {new_card}\n")
-        curr_hand.append(new_card)
+        player.hand.append(new_card)
 
-    def drop_half_cards(self, curr_player: Player, curr_hand: list[Card]) -> bool:
-        cards_removed = len(curr_hand) // 2
+    def drop_half_cards(self, player: Player) -> bool:
+        cards_removed = len(player.hand) // 2
         modified: bool = False
-        matched_keys = get_player_passive(curr_player, "B-HOP")
+        matched_keys = get_player_passive(player, "B-HOP")
         if matched_keys:
-            drop_bonus = bhop_passive_tech(curr_player, matched_keys, "drop_half_cards")
+            drop_bonus = bhop_passive_tech(player, matched_keys, "drop_half_cards")
             if drop_bonus >= 1:
                 modified = True
 
         for i in range(cards_removed):
             print(f"Choose a card to remove ({i}/{cards_removed} removed already)")
-            user_card = card_choosing(curr_player, curr_hand)
-            curr_hand.remove(user_card)
+            user_card = card_choosing(player, player.hand)
+            player.move_to_deck(user_card)
             if modified:
-                curr_hand.append(self.deck.draw_card())
+                player.hand.append(player.deck.draw_card())
                 print(f" - New card added to hand")
                 if input("To stop dropping cards type \"stop\": ").lower():
                     break
 
         if not modified:
             for _ in range(cards_removed):
-                curr_hand.append(self.deck.draw_card())
+                player.hand.append(player.deck.draw_card())
             print(f"{cards_removed} new cards have been added to your hand\n")
         return False
 
-    def defend(self, curr_player: Player, def_stacks: int):
-        matched_keys = get_player_passive(curr_player, "B-HOP")
+    def defend(self, player: Player, def_stacks: int):
+        matched_keys = get_player_passive(player, "B-HOP")
         if matched_keys:
-            def_bonus = bhop_passive_tech(curr_player, matched_keys, "defend")
+            def_bonus = bhop_passive_tech(player, matched_keys, "defend")
             def_stacks += def_bonus
 
-        curr_player.defending += def_stacks
-        print(f"{curr_player.name} has gained {def_stacks} stack(s) of defense\n")
+        player.defending += def_stacks
+        print(f"{player.name} has gained {def_stacks} stack(s) of defense\n")
 
-    def move_player(self, curr_player: Player) -> float:
+    def move_player(self, player: Player) -> float:
         move_list = []
         velocity_modifier = 1
-        max_moves = MIN_MOVE + int(curr_player.speed_value() // SPEED_IMPACT)
+        max_moves = MIN_MOVE + int(player.speed_value() // SPEED_IMPACT)
         print_movement_table()
         print(f"Input a movement sequence of moves from the \"Move\" column in the table above\n"
               f"Separate each input with a \",\" with a maximum of {max_moves} choices")
@@ -381,18 +367,18 @@ class GameLoop:
                 continue
             break
 
-        prev_vector = curr_player.print_speed(True)
-        prev_speed = curr_player.speed_value()
+        prev_vector = player.print_speed(True)
+        prev_speed = player.speed_value()
 
         movement_chunks = chunk_split_movement(move_list)
-        tech_list = evaluate_movement_chunks(movement_chunks, curr_player)
+        tech_list = evaluate_movement_chunks(movement_chunks, player)
         if len(tech_list) > 0:
-            evaluate_tech_list(tech_list, curr_player)
+            evaluate_tech_list(tech_list, player)
 
-        active_tech = curr_player.active_tech
-        if "SUPER" in curr_player.active_tech or "HYPER" in active_tech:
+        active_tech = player.active_tech
+        if "SUPER" in player.active_tech or "HYPER" in active_tech:
             active_tech, modifiers_list, chain_len = get_tech_modifiers(active_tech)
-            plr_dir_x, plr_dir_y = vector2_dir(curr_player.speed)
+            plr_dir_x, plr_dir_y = vector2_dir(player.speed)
             plr_dir_x = 1 if plr_dir_x == 0 else plr_dir_x
 
             x, y = TECH_SPEED_LIB[active_tech]
@@ -405,9 +391,9 @@ class GameLoop:
             hyper_boost_y = y * (extension // 2.4) * chain_mult
             hyper_boost = (hyper_boost_x, hyper_boost_y)
 
-            curr_player.speed = vector2_add(curr_player.speed, hyper_boost)
-            print(f" - {curr_player.name}'s speed has been influenced via a {active_tech.lower()} active tech")
-            curr_player.transfer_active_tech()
+            player.speed = vector2_add(player.speed, hyper_boost)
+            print(f" - {player.name}'s speed has been influenced via a {active_tech.lower()} active tech")
+            player.transfer_active_tech()
             velocity_modifier /= slide
 
         elif "ULTRA" in active_tech:
@@ -422,13 +408,13 @@ class GameLoop:
             ultra_mult_y = y * chain_mult
             ultra_mult = (ultra_mult_x, ultra_mult_y)
 
-            curr_player.speed = vector2_mult(curr_player.speed, ultra_mult)
-            print(f" - {curr_player.name}'s speed has been influenced via an ultra active tech")
-            curr_player.transfer_active_tech()
+            player.speed = vector2_mult(player.speed, ultra_mult)
+            print(f" - {player.name}'s speed has been influenced via an ultra active tech")
+            player.transfer_active_tech()
 
-        elif "B-HOP" in active_tech and curr_player.speed_value() > 0:
+        elif "B-HOP" in active_tech and player.speed_value() > 0:
             active_tech, modifiers_list, chain_len = get_tech_modifiers(active_tech)
-            plr_dir_x, plr_dir_y = vector2_dir(curr_player.speed)
+            plr_dir_x, plr_dir_y = vector2_dir(player.speed)
 
             x, y = TECH_SPEED_LIB[active_tech]
 
@@ -440,14 +426,14 @@ class GameLoop:
             b_hop_boost_y = (y + high_jump) * extension * chain_mult
             b_hop_boost = (b_hop_boost_x, b_hop_boost_y)
 
-            curr_player.speed = vector2_add(curr_player.speed, b_hop_boost)
-            print(f" - {curr_player.name}'s speed has been influenced via a b-hop active tech")
-            curr_player.transfer_active_tech()
+            player.speed = vector2_add(player.speed, b_hop_boost)
+            print(f" - {player.name}'s speed has been influenced via a b-hop active tech")
+            player.transfer_active_tech()
             velocity_modifier /= (1.25 + (extension // 3) + (high_jump // 3))
 
         elif "FALL-BOOST" in active_tech:
             active_tech, modifiers_list, chain_len = get_tech_modifiers(active_tech)
-            plr_dir_x, plr_dir_y = vector2_dir(curr_player.speed)
+            plr_dir_x, plr_dir_y = vector2_dir(player.speed)
             plr_dir_x *= -1 # inverting, FALL-BOOST decreases horizontal speed
 
             x, y = TECH_SPEED_LIB[active_tech]
@@ -460,21 +446,21 @@ class GameLoop:
             fall_boost_y = y * slow_fall * fast_fall * chain_mult
             fall_boost = (fall_boost_x, fall_boost_y)
 
-            curr_player.speed = vector2_add(curr_player.speed, fall_boost)
-            print(f" - {curr_player.name}'s speed has been influenced via a fall-boost active tech")
-            curr_player.transfer_active_tech()
+            player.speed = vector2_add(player.speed, fall_boost)
+            print(f" - {player.name}'s speed has been influenced via a fall-boost active tech")
+            player.transfer_active_tech()
 
             if slow_fall > 1:
-                curr_player.defending += 1
-                print(f" - {curr_player.name}'s defense stacks have been increased by 1 via slow-falling")
+                player.defending += 1
+                print(f" - {player.name}'s defense stacks have been increased by 1 via slow-falling")
             elif fast_fall > 1:
-                def_change = 1 if curr_player.defending >= 1 else 0
-                curr_player.defending -= def_change
-                print(f" - {curr_player.name}'s defense stacks have been decreased by {def_change} via fast-falling")
+                def_change = 1 if player.defending >= 1 else 0
+                player.defending -= def_change
+                print(f" - {player.name}'s defense stacks have been decreased by {def_change} via fast-falling")
 
         elif "BOUNCE-BOOST" in active_tech:
             active_tech, modifiers_list, chain_len = get_tech_modifiers(active_tech)
-            plr_dir_x, plr_dir_y = vector2_dir(curr_player.speed)
+            plr_dir_x, plr_dir_y = vector2_dir(player.speed)
             plr_dir_x *= -1  # inverting, BOUNCE-BOOST decreases horizontal speed
 
             x, y = TECH_SPEED_LIB[active_tech]
@@ -487,19 +473,19 @@ class GameLoop:
             bounce_boost_y = y * (1 + extension + high_jump) * chain_mult
             bounce_boost = (bounce_boost_x, bounce_boost_y)
 
-            curr_player.speed = vector2_add(curr_player.speed, bounce_boost)
-            print(f" - {curr_player.name}'s speed has been influenced via a bounce-boost active tech")
-            curr_player.transfer_active_tech()
+            player.speed = vector2_add(player.speed, bounce_boost)
+            print(f" - {player.name}'s speed has been influenced via a bounce-boost active tech")
+            player.transfer_active_tech()
 
             if high_jump > 0:
                 def_change = int(bounce_boost_y // SPEED_IMPACT)
-                def_change = def_change if curr_player.defending > def_change else curr_player.defending
-                curr_player.defending -= def_change
-                print(f" - {curr_player.name}'s defense stacks have been decreased by {def_change} via high-jumping")
+                def_change = def_change if player.defending > def_change else player.defending
+                player.defending -= def_change
+                print(f" - {player.name}'s defense stacks have been decreased by {def_change} via high-jumping")
 
-        print(f"{curr_player.name}'s speed change:\n"
-              f" --> {prev_vector} --> {curr_player.print_speed(True)}\n"
-              f" --> {prev_speed:,.2f} m/s --> {curr_player.speed_value():,.2f} m/s\n")
+        print(f"{player.name}'s speed change:\n"
+              f" --> {prev_vector} --> {player.print_speed(True)}\n"
+              f" --> {prev_speed:,.2f} m/s --> {player.speed_value():,.2f} m/s\n")
         return velocity_modifier
 
 # ── Util / Helper Functions ──────────────────────────────
@@ -508,7 +494,7 @@ def game_winner(winner: Player):
           figlet_format(f"{winner.name}", font="larry3d"))
 
 def card_choosing(p: Player, hand: list[Card]) -> Card:
-    print_hand(curr_player=p, curr_hand=hand)
+    print_hand(player=p, hand=hand)
     card_idx: int = inputInt(prompt="Pick a card by its index : ", min=0, max=len(hand)-1)
     card: Card = hand[card_idx]
     return card

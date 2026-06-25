@@ -1,14 +1,15 @@
 from typing import Optional
 
 from card_class import Card
-from constants_libraries import MOVEMENT_TECH_LIB, START_PLAYER_HEALTH, ACTION_AMOUNT, INITIAL_SPEED
+from deck_class import Deck
+from constants_libraries import MOVEMENT_TECH_LIB, START_PLAYER_HEALTH, ACTION_AMOUNT, INITIAL_SPEED, PLAYER_HAND_SIZE
 
 
 class Player:
     def __init__(self):
-        # hand | parry_card | active_tech | passive_tech : are not shown
         self.name: str = "PLACEHOLDER"
         self.hand: list[Card] = []
+        self.deck: Deck = Deck()
         self.health: float = START_PLAYER_HEALTH
 
         self.parry_card: Optional[Card] = None
@@ -61,6 +62,17 @@ class Player:
         self.passive_tech[active_tech] += " \\ CHAIN" + chain
         print(f" <*> CHAIN modifier added to {active_tech} in {self.name}'s passive tech list")
         return "chain"
+
+    def fill_hand(self):
+        if len(self.deck) == 0:
+            self.deck.fill()
+        to_fill = PLAYER_HAND_SIZE - len(self.hand)
+        for _ in range(to_fill):
+            self.hand.append(self.deck.draw_card())
+
+    def move_to_deck(self, card: Card):
+        self.hand.remove(card)
+        self.deck.return_card(card)
 
     def rename(self, name: str | None = None):
         if name is not None:

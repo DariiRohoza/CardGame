@@ -7,15 +7,18 @@ from player_class import Player
 from constants_libraries import SUIT_LIB, MOVEMENT_LIB, CARD_PRINT, PLAYER_PRINT, MOVEMENT_PRINT
 
 
-def print_hand(curr_player: Player | None = None, curr_hand: list[Card] | None = None) -> bool:
-    if curr_player is None or curr_hand is None:
+def print_hand(player: Player | None = None, hand: list[Card] | None = None) -> bool:
+    if player is None or hand is None:
         print(f"No player provided or hand is empty")
         return False
 
-    card_table = Table(caption=f"{curr_player.name}'s cards", box=box.ROUNDED)
+    if len(hand) == 0:
+        hand = player.hand
+
+    card_table = Table(caption=f"{player.name}'s cards", box=box.ROUNDED)
     for item in CARD_PRINT:
         card_table.add_column(item[0], min_width=item[1], justify="center", no_wrap=True)
-    for idx, item in enumerate(curr_hand):
+    for idx, item in enumerate(hand):
         style, suit_rank = item.style, str(item.rank) + str(SUIT_LIB[item.suit])
         card_table.add_row(str(idx), style, suit_rank)
 
@@ -23,7 +26,7 @@ def print_hand(curr_player: Player | None = None, curr_hand: list[Card] | None =
     console.print(card_table)
     return True
 
-def print_players(player_list: list[Player], curr_player: Player | None = None) -> bool:
+def print_players(player_list: list[Player], player: Player | None = None) -> bool:
     if len(player_list) == 0:
         print(f"Not enough players to print!")
         return False
@@ -39,7 +42,7 @@ def print_players(player_list: list[Player], curr_player: Player | None = None) 
 
         if weakness == "": weakness = "None"
         if strength == "": strength = "None"
-        you = "You" if curr_player == plr else "N/A"
+        you = "You" if player == plr else "N/A"
 
         player_table.add_row(str(idx), name, health, defense, attack_stack, actions,
                              f"{speed:,.2f} m/s", weakness, strength, you)

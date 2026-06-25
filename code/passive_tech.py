@@ -5,7 +5,7 @@ from movement_func import get_tech_modifiers
 from player_class import Player
 
 
-def super_hyper_passive_tech(p: Player, matched: list) -> float:
+def super_hyper_passive_tech(player: Player, matched: list) -> float:
     tech, chain = matched[0]
     full_tech = tech + chain if chain != "" else tech
     passive_tech, modifiers_list, chain_len = get_tech_modifiers(full_tech)
@@ -15,11 +15,11 @@ def super_hyper_passive_tech(p: Player, matched: list) -> float:
     chain_mult = 1 + 1.10 * chain_len
 
     bonus = (1 + extension) * chain_mult * slide
-    del p.passive_tech[tech]
-    print(f" - {p.name}'s passive tech increased attack stack (tech: {full_tech} bonus: {bonus:,.2f})")
+    del player.passive_tech[tech]
+    print(f" - {player.name}'s passive tech increased attack stack (tech: {full_tech} bonus: {bonus:,.2f})")
     return bonus
 
-def ultra_passive_tech(p: Player, matched: list) -> float:
+def ultra_passive_tech(player: Player, matched: list) -> float:
     tech, chain = matched[0]
     full_tech = tech + chain if chain != "" else tech
     passive_tech, modifiers_list, chain_len = get_tech_modifiers(full_tech)
@@ -28,11 +28,11 @@ def ultra_passive_tech(p: Player, matched: list) -> float:
     chain_mult = 0.50 + 0.20 * chain_len
 
     bonus = 1 + extension * chain_mult
-    del p.passive_tech[tech]
+    del player.passive_tech[tech]
     print(f" * Attacker passive tech increased damage (tech: {full_tech} multiplier: {bonus:,.2f})")
     return bonus
 
-def bhop_passive_tech(p: Player, matched: list, use: str) -> int:
+def bhop_passive_tech(player: Player, matched: list, use: str) -> int:
     if use == "":
         use_text = "dropped cards count and modified the drop cards action"
     else:
@@ -48,11 +48,11 @@ def bhop_passive_tech(p: Player, matched: list, use: str) -> int:
 
     bonus = ceil(chain_mult * high_jump + extension)
     if bonus >= 1:
-        del p.passive_tech[tech]
-        print(f" - {p.name}'s passive tech increased {use_text} (tech: {full_tech} bonus: {bonus})")
+        del player.passive_tech[tech]
+        print(f" - {player.name}'s passive tech increased {use_text} (tech: {full_tech} bonus: {bonus})")
     return bonus
 
-def fall_passive_tech(p: Player, matched: list) -> float:
+def fall_passive_tech(player: Player, matched: list) -> float:
     tech, chain = matched[0]
     full_tech = tech + chain if chain != "" else tech
     passive_tech, modifiers_list, chain_len = get_tech_modifiers(full_tech)
@@ -62,11 +62,11 @@ def fall_passive_tech(p: Player, matched: list) -> float:
     chain_mult = 1 + 0.5 * chain_len
 
     bonus = 1 + (slow_fall - fast_fall) * chain_mult
-    del p.passive_tech[tech]
+    del player.passive_tech[tech]
     print(f" * Target passive tech changed damage (tech: {full_tech} multiplier: {bonus:,.2f})")
     return bonus
 
-def bounce_passive_tech(p: Player, matched: list) -> float:
+def bounce_passive_tech(player: Player, matched: list) -> float:
     tech, chain = matched[0]
     full_tech = tech + chain if chain != "" else tech
     passive_tech, modifiers_list, chain_len = get_tech_modifiers(full_tech)
@@ -76,6 +76,6 @@ def bounce_passive_tech(p: Player, matched: list) -> float:
     chain_mult = 1 + 0.20 * chain_len
 
     bonus = 2 * high_jump * extension * chain_mult
-    del p.passive_tech[tech]
+    del player.passive_tech[tech]
     print(f" * Attacker passive tech decreased target parry effectiveness")
     return bonus

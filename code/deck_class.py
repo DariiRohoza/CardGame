@@ -22,6 +22,9 @@ class Deck:
             self.fill()
         return self.cards.pop()
 
+    def return_card(self, card: Card):
+        self.cards.append(card)
+
     def shuffle(self):
         shuffle(self.cards)
 

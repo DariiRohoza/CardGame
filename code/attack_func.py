@@ -11,30 +11,30 @@ from constants_libraries import (STYLE_LIB, SUIT_LIB, ACTION_MULTIPLIER, SPEED_I
                                  DEFENSE_STRENGTH_LIM, DEFENSE_WEAKNESS_LIM, DEFENSE_THRESHOLD, MIN_WEAKNESS_CRITICAL)
 
 
-def evaluate_card(used_card: Card, curr_player: Player, stack_apply: bool = False):
+def evaluate_card(used_card: Card, player: Player, stack_apply: bool = False):
     weakness_used = False
     strength_used = False
 
     card_suit, card_rank, card_style = used_card.suit, used_card.rank, used_card.style
     value = float(card_rank)
-    value += curr_player.attack_stack if stack_apply else 0
+    value += player.attack_stack if stack_apply else 0
     value *= STYLE_LIB[card_style]
-    if curr_player.weakness == SUIT_LIB[card_suit]:
+    if player.weakness == SUIT_LIB[card_suit]:
         value *= 0.75
-        print(f" * Used {curr_player.name} weakness ({curr_player.weakness})")
+        print(f" * Used {player.name} weakness ({player.weakness})")
         weakness_used = True
-    if curr_player.strength == SUIT_LIB[card_suit]:
+    if player.strength == SUIT_LIB[card_suit]:
         value *= 1.50
-        print(f" * Used {curr_player.name} strength ({curr_player.strength})")
+        print(f" * Used {player.name} strength ({player.strength})")
         strength_used = True
 
     return value, weakness_used, strength_used
 
-def evaluate_multipliers(curr_player: Player, weakness_used: bool, strength_used: bool):
+def evaluate_multipliers(player: Player, weakness_used: bool, strength_used: bool):
     if weakness_used:
-        curr_player.weakness = ""
+        player.weakness = ""
     if strength_used:
-        curr_player.strength = ""
+        player.strength = ""
 
 def attack_player(used_card: Card, attacker: Player, target: Player):
     defending_bool = False
