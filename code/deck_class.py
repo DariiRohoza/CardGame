@@ -20,7 +20,7 @@ class Deck:
         if len(self) == 0:
             print(f"The deck is empty, calling fill to complete the new deck before drawing a card")
             self.fill()
-        return self.cards.pop()
+        return self.cards.pop(0)
 
     def return_card(self, card: Card):
         self.cards.append(card)
