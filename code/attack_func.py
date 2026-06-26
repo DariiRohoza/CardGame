@@ -11,22 +11,56 @@ from constants_libraries import (STYLE_LIB, SUIT_LIB, ACTION_MULTIPLIER, SPEED_I
                                  DEFENSE_STRENGTH_LIM, DEFENSE_WEAKNESS_LIM, DEFENSE_THRESHOLD, MIN_WEAKNESS_CRITICAL)
 
 
-def evaluate_card(used_card: Card, player: Player, stack_apply: bool = False):
+def handle_player_mult(player: Player, card_suit: int, value: float, target: bool = False):
     weakness_used = False
     strength_used = False
 
-    card_suit, card_rank, card_style = used_card.suit, used_card.rank, used_card.style
-    value = float(card_rank)
-    value += player.attack_stack if stack_apply else 0
-    value *= STYLE_LIB[card_style]
+    weakness_mult = 0.75 if not target else 1.50
+    strength_mult = 1.50 if not target else 0.75
+
+    weakness_text = f" * Applied {player.name} weakness ({player.weakness} : {weakness_mult})"
+    strength_text = f" * Applied {player.name} strength ({player.strength} : {strength_mult})"
+
     if player.weakness == SUIT_LIB[card_suit]:
         value *= 0.75
-        print(f" * Used {player.name} weakness ({player.weakness})")
-        weakness_used = True
+        print(weakness_text)
+        weakness_used = True if not target else False
     if player.strength == SUIT_LIB[card_suit]:
         value *= 1.50
-        print(f" * Used {player.name} strength ({player.strength})")
-        strength_used = True
+        print(strength_text)
+        strength_used = True if not target else False
+
+    return value, weakness_used, strength_used
+
+def handle_player_speed(attacker: Player, target: Player, value):
+    speed_modifier = 1 + tanh((attacker.speed_value() - target.speed_value()) / (3 * SPEED_IMPACT))
+
+    if speed_modifier != 1:
+        value *= speed_modifier
+        print(f" * Attacker and Target speeds modified damage ({speed_modifier:,.2f})")
+
+    if attacker.speed_value() > 0 and target.speed_value() > 0:
+        target_dir_x, target_dir_y = vector2_dir(target.speed)
+        attacker_dir_x, attacker_dir_y = vector2_dir(attacker.speed)
+        dif_dir_x = target_dir_x + attacker_dir_x
+        dif_dir_y = target_dir_y + attacker_dir_y
+
+        mult_x = 1.05 + (-0.05 * abs(dif_dir_x))
+        mult_y = 1.05 + (-0.05 * abs(dif_dir_y))
+        value *= mult_x
+        value *= mult_y
+        print(f" * Movement direction of both players affected damage (x: {mult_x:,.2f}, y: {mult_y:,.2f})")
+
+    return speed_modifier, value
+
+def evaluate_card(used_card: Card, player: Player, stack_apply: bool = False):
+    card_suit, card_rank, card_style = used_card.suit, used_card.rank, used_card.style
+
+    value: float = float(card_rank)
+    value += player.attack_stack if stack_apply else 0
+    value *= STYLE_LIB[card_style]
+
+    value, weakness_used, strength_used = handle_player_mult(player, card_suit, value)
 
     return value, weakness_used, strength_used
 
@@ -37,15 +71,13 @@ def evaluate_multipliers(player: Player, weakness_used: bool, strength_used: boo
         player.strength = ""
 
 def attack_player(used_card: Card, attacker: Player, target: Player):
-    defending_bool = False
-    weakness_bool = False
-
     card_suit, card_rank, card_style = used_card.suit, used_card.rank, used_card.style
     damage, weakness_used, strength_used = evaluate_card(used_card, attacker, True)
+    evaluate_multipliers(attacker, weakness_used, strength_used)
 
     if attacker.attack_stack > 0:
+        print(f" * Used attacker damage stack to amplify damage ({attacker.attack_stack})")
         attacker.attack_stack = 0
-        print(f" * Used attacker damage stack to amplify damage")
 
     if DEFENSE_THRESHOLD <= target.defending:
         damage = 0
@@ -54,21 +86,7 @@ def attack_player(used_card: Card, attacker: Player, target: Player):
         target.defending = remaining_defense
 
     else:
-        speed_modifier = 1 + tanh((attacker.speed_value() - target.speed_value()) / (3 * SPEED_IMPACT))
-        if speed_modifier != 1:
-            damage *= speed_modifier
-            print(f" * Attacker and Target speeds modified damage ({speed_modifier:,.2f})")
-        if attacker.speed_value() > 0 and target.speed_value() > 0:
-            target_dir_x, target_dir_y = vector2_dir(target.speed)
-            attacker_dir_x, attacker_dir_y = vector2_dir(attacker.speed)
-            dif_dir_x = target_dir_x + attacker_dir_x
-            dif_dir_y = target_dir_y + attacker_dir_y
-
-            mult_x = 1.05 + (-0.05 * abs(dif_dir_x))
-            mult_y = 1.05 + (-0.05 * abs(dif_dir_y))
-            damage *= mult_x
-            damage *= mult_y
-            print(f" * Movement direction of both players affected damage (x: {mult_x:,.2f}, y: {mult_y:,.2f})")
+        speed_modifier, damage = handle_player_speed(attacker, target, damage)
 
         if target.parry_card is not None:
             value, weakness_used, strength_used = evaluate_card(target.parry_card, target)
@@ -100,21 +118,14 @@ def attack_player(used_card: Card, attacker: Player, target: Player):
             mult = fall_passive_tech(target, matched_keys)
             damage *= mult
 
+        damage, weakness_used, strength_used = handle_player_mult(target, card_suit, damage, target=True)
+
         if 0 < target.defending:
             damage *= 0.90 ** target.defending
             print(f" * Nullified 1 target defense stack")
             target.defending -= 1 # defense stacks get removed one by one, but they all impact damage taken
-            defending_bool = True
 
-        if target.weakness == SUIT_LIB[card_suit]:
-            damage *= 1.50
-            print(f" * Target weakness amplified damage ({target.weakness})")
-            weakness_bool = True
-        if target.strength == SUIT_LIB[card_suit]:
-            damage *= 0.75
-            print(f" * Target strength reduced damage ({target.strength})")
-
-        if defending_bool and weakness_bool:
+        if 0 < target.defending and target.weakness == SUIT_LIB[card_suit]:
             # weak_def_crit scales effectiveness of hits targeting weakness with the amount of defense of target
             weak_def_crit = (target.defending // 3) - 1
             weak_def_crit = weak_def_crit if MIN_WEAKNESS_CRITICAL < weak_def_crit else MIN_WEAKNESS_CRITICAL
@@ -132,8 +143,8 @@ def attack_player(used_card: Card, attacker: Player, target: Player):
             0.30 * speed_modifier * ACTION_MULTIPLIER,
             0.30 * speed_modifier * ACTION_MULTIPLIER
         )
+        print(f" * Attacker attack decreased target speed")
 
-    evaluate_multipliers(attacker, weakness_used, strength_used)
     if damage > 0:
         target.health -= damage
         target.weakness = SUIT_LIB[card_suit]
