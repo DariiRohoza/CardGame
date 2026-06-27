@@ -70,10 +70,10 @@ TECH_SPEED_LIB = {
 
 # faster ways of writing dashes with "none"
 MOVEMENT_SHORTCUTS = {
-    "DASH-LEFT": "DASH-NONE-LEFT,",
-    "DASH-RIGHT": "DASH-NONE-RIGHT,",
-    "DASH-DOWN": "DASH-DOWN-NONE,",
-    "DASH-UP": "DASH-UP-NONE,",
+    "DASH-LEFT": "DASH-NONE-LEFT",
+    "DASH-RIGHT": "DASH-NONE-RIGHT",
+    "DASH-DOWN": "DASH-DOWN-NONE",
+    "DASH-UP": "DASH-UP-NONE",
 }
 
 changed_INVERSION_BOOST = 1.50
