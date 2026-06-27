@@ -2,7 +2,8 @@ from typing import Optional
 
 from card_class import Card
 from deck_class import Deck
-from constants_libraries import MOVEMENT_TECH_LIB, START_PLAYER_HEALTH, ACTION_AMOUNT, INITIAL_SPEED, PLAYER_HAND_SIZE
+from move_tech_class import MoveTech
+from constants_libraries import START_PLAYER_HEALTH, ACTION_AMOUNT, INITIAL_SPEED, PLAYER_HAND_SIZE
 
 
 class Player:
@@ -20,8 +21,8 @@ class Player:
 
         self.action_count: int = ACTION_AMOUNT
         self.speed: tuple[float, float] = INITIAL_SPEED
-        self.active_tech: str = "" # after being used as an active, moves to the passive list to be used again
-        self.passive_tech: dict[str, str] = {} # (tech + modifier(s)) : CHAIN(s)
+        self.active_tech: Optional[MoveTech] = None
+        self.passive_tech: list[MoveTech] = []
 
         # only values from SUIT_LIB or an empty string ""
         self.weakness: str = ""
@@ -41,26 +42,24 @@ class Player:
     def speed_value(self) -> int:
         return ((self.speed[0] ** 2) + (self.speed[1] ** 2)) ** (1/2)
 
-    def transfer_active_tech(self, replacement: str | None = None) -> str:
-        chain = ""
-        active_tech = self.active_tech
-        if replacement is not None and replacement in MOVEMENT_TECH_LIB.values():
+    def transfer_active_tech(self, replacement: Optional[MoveTech] = None) -> str:
+        tech = self.active_tech
+        if replacement is not None:
             self.active_tech = replacement
             print(f" <*> Updated {self.name}'s active tech to be {self.active_tech}")
         else:
-            self.active_tech = ""
+            self.active_tech = None
 
-        if active_tech == "":
+        if tech is None:
             return "none"
-        if " \\ " in active_tech:
-            active_tech, chain = active_tech.split(" \\ ", maxsplit=1)
-        if active_tech not in self.passive_tech.keys():
-            self.passive_tech.update({active_tech: chain})
-            chain = " \\ " + chain if chain != "" else chain
-            print(f" <*> Added {active_tech}{chain} to {self.name}'s passive tech list")
+        elif tech not in self.passive_tech:
+            self.passive_tech.append(tech)
+            print(f" <*> Added {tech} to {self.name}'s passive tech list")
             return "added"
-        self.passive_tech[active_tech] += " \\ CHAIN" + chain
-        print(f" <*> CHAIN modifier added to {active_tech} in {self.name}'s passive tech list")
+        idx = self.passive_tech.index(tech)
+        for _ in range(tech.chain_count + 1):
+            self.passive_tech[idx].add_chain()
+        print(f" <*> CHAIN added to a tech in {self.name}'s passive tech list ({tech} -> {self.passive_tech[idx]})")
         return "chain"
 
     def fill_hand(self):

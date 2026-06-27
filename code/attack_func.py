@@ -1,7 +1,7 @@
 from math import tanh
 
 from movement_func import get_player_passive
-from passive_tech import ultra_passive_tech, fall_passive_tech, bounce_passive_tech
+from tech_func import ultra_passive_tech, fall_passive_tech, bounce_passive_tech
 from vector2_func import vector2_dir, vector2_decay
 
 from card_class import Card

@@ -84,14 +84,14 @@ class GameLoop:
                 self.iterate_turn()
 
             if len(self.player_list) == 1:
-                print(f" > A winner has been found!\n")
+                print(f">>> A winner has been found!\n")
                 self.conclude_game = True
                 game_winner(self.player_list[0])
 
             if curr_player.speed_value() > 0 and self.action_counter == 0 and not no_decay:
                 vector2_decay(curr_player, velocity_modifier, velocity_modifier)
                 print(f">>> Applied velocity decay to {curr_player.name} "
-                      f"final speed : {curr_player.speed_value():,.2f})\n")
+                      f"(final speed : {curr_player.speed_value():,.2f})")
 
             if curr_player.parry_time > 0 and self.action_counter == 0:
                 curr_player.parry_time -= 1
@@ -99,7 +99,7 @@ class GameLoop:
             if curr_player.parry_time == 0 and curr_player.parry_card is not None:
                 parry_card = curr_player.parry_card
                 curr_player.parry_card = None
-                print(f" - {curr_player.name}'s parry card expired : {parry_card}\n")
+                print(f">>> {curr_player.name}'s parry card expired : {parry_card}\n")
 
     def iterate_turn(self):
         self.action_counter += 1
