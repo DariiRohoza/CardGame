@@ -19,7 +19,7 @@ class Card:
         elif suit not in SUIT_LIB.keys() or rank < MIN_GENERATED_CARD_RANK or style not in STYLE_LIB:
             raise ValueError(f"Suit ({suit}) or rank {rank} or style {style}: Invalid value")
         elif self.suit != -1 or self.rank != 0 or self.style != "":
-            raise ValueError(f"Suit ({suit}) or rank {rank} or style {style}: A value is already assigned")
+            raise ValueError(f"Suit ({self.suit}) or rank {self.rank} or style {self.style}: A value is already assigned")
         else:
             self.suit = suit
             self.rank = rank

@@ -26,52 +26,54 @@ MOVEMENT_LIB = {
     "JUMP": ((0, 10), "B-HOP"),
     "STALL": ((0, 0), "NONE")
 }
-# TECH : SUPER, HYPER, ULTRA, B-HOP, FALL-BOOST, BOUNCE-BOOST
-# MODIFIERS : EXTENDED, SLIDE, HIGH-JUMP, SLOW-FALL, FAST-FALL, CHAIN (repeated use)
-MOVEMENT_TECH_LIB = {
-    ("DASH-NONE-*", "JUMP"): "SUPER",
-    ("DASH-NONE-*", "STALL", "JUMP"): "SUPER : EXTENDED",
-    ("DASH-NONE-*", "STALL", "STALL"): "SUPER : SLIDE",
-    ("DASH-NONE-*", "STALL", "DASH-NONE-<", "STALL"): "SUPER : SLIDE | EXTENDED",
 
-    ("DASH-DOWN-*", "JUMP"): "HYPER",
-    ("DASH-DOWN-*", "STALL", "JUMP"): "HYPER : EXTENDED",
-    ("DASH-DOWN-*", "STALL", "STALL"): "HYPER : SLIDE",
-    ("DASH-DOWN-*", "STALL", "DASH-DOWN-<", "STALL"): "HYPER : SLIDE | EXTENDED",
+POSSIBLE_TECH = {"SUPER", "HYPER", "ULTRA", "B-HOP", "FALL-BOOST", "BOUNCE-BOOST"}
+POSSIBLE_MODIFIERS = {"EXTENDED", "SLIDE", "HIGH-JUMP", "SLOW-FALL", "FAST-FALL"}
 
-    ("DASH-DOWN-*", "DASH-DOWN-<", "STALL", "JUMP"): "ULTRA",
-    ("DASH-DOWN-*", "DASH-DOWN-<", "STALL", "STALL", "JUMP"): "ULTRA : EXTENDED",
+MOVEMENT_TECH_LIB: dict[tuple, tuple[str, list, int]] = {
+    ("DASH-NONE-*", "JUMP"): ("SUPER", [], 0),
+    ("DASH-NONE-*", "STALL", "JUMP"): ("SUPER", ["EXTENDED"], 0),
+    ("DASH-NONE-*", "STALL", "STALL"): ("SUPER", ["SLIDE"], 0),
+    ("DASH-NONE-*", "STALL", "DASH-NONE-<", "STALL"): ("SUPER", ["EXTENDED", "SLIDE"], 0),
 
-    ("JUMP", "STALL", "JUMP"): "B-HOP",
-    ("JUMP", "STALL", "DASH-NONE-*", "JUMP"): "B-HOP : EXTENDED",
-    ("JUMP", "STALL", "DASH-DOWN-*", "JUMP"): "B-HOP : HIGH-JUMP",
-    ("JUMP", "STALL", "DASH-NONE-*", "STALL", "JUMP"): "B-HOP : HIGH-JUMP, EXTENDED",
+    ("DASH-DOWN-*", "JUMP"): ("HYPER", [], 0),
+    ("DASH-DOWN-*", "STALL", "JUMP"): ("HYPER", ["EXTENDED"], 0),
+    ("DASH-DOWN-*", "STALL", "STALL"): ("HYPER", ["SLIDE"], 0),
+    ("DASH-DOWN-*", "STALL", "DASH-DOWN-<", "STALL"): ("HYPER", ["EXTENDED", "SLIDE"], 0),
 
-    ("DASH-UP-*", "STALL"): "FALL-BOOST",
-    ("DASH-UP-*", "STALL", "JUMP"): "FALL-BOOST : SLOW-FALL",
-    ("DASH-UP-*", "STALL", "DASH-DOWN-NONE"): "FALL-BOOST : FAST-FALL",
+    ("DASH-DOWN-*", "DASH-DOWN-<", "STALL", "JUMP"): ("ULTRA", [], 0),
+    ("DASH-DOWN-*", "DASH-DOWN-<", "STALL", "STALL", "JUMP"): ("ULTRA", ["EXTENDED"], 0),
 
-    ("DASH-DOWN-NONE", "JUMP"): "BOUNCE-BOOST",
-    ("DASH-DOWN-NONE", "DASH-UP-*", "JUMP"): "BOUNCE-BOOST : HIGH-JUMP",
-    ("DASH-DOWN-NONE", "STALL", "JUMP"): "BOUNCE-BOOST : EXTENDED",
-    ("DASH-DOWN-NONE", "STALL", "DASH-UP-*", "JUMP"): "BOUNCE-BOOST : HIGH-JUMP | EXTENDED",
+    ("JUMP", "STALL", "JUMP"): ("B-HOP", [], 0),
+    ("JUMP", "STALL", "DASH-NONE-*", "JUMP"): ("B-HOP", ["EXTENDED"], 0),
+    ("JUMP", "STALL", "DASH-DOWN-*", "JUMP"): ("B-HOP", ["HIGH-JUMP"], 0),
+    ("JUMP", "STALL", "DASH-NONE-*", "STALL", "JUMP"): ("B-HOP", ["EXTENDED", "HIGH-JUMP"], 0),
+
+    ("DASH-UP-*", "STALL"): ("FALL-BOOST", [], 0),
+    ("DASH-UP-*", "STALL", "JUMP"): ("FALL-BOOST", ["SLOW-FALL"], 0),
+    ("DASH-UP-*", "STALL", "DASH-DOWN-NONE"): ("FALL-BOOST", ["FAST-FALL"], 0),
+
+    ("DASH-DOWN-NONE", "JUMP"): ("BOUNCE-BOOST", [], 0),
+    ("DASH-DOWN-NONE", "STALL", "JUMP"): ("BOUNCE-BOOST", ["EXTENDED"], 0),
+    ("DASH-DOWN-NONE", "DASH-UP-*", "JUMP"): ("BOUNCE-BOOST", ["HIGH-JUMP"], 0),
+    ("DASH-DOWN-NONE", "STALL", "DASH-UP-*", "JUMP"): ("BOUNCE-BOOST", ["EXTENDED", "HIGH-JUMP"], 0),
 }
 
 TECH_SPEED_LIB = {
-    "SUPER" :         (20,   8),
-    "HYPER" :         (26,   3),
-    "ULTRA":          (1.5,  1.3),
-    "B-HOP":          (28,   10),
-    "FALL-BOOST":     (3.5,  -30),
-    "BOUNCE-BOOST":   (3.5,  25)
+    "SUPER" :       (20,   8),
+    "HYPER" :       (26,   3),
+    "ULTRA":        (1.5,  1.3),
+    "B-HOP":        (28,   10),
+    "FALL-BOOST":   (3.5,  -30),
+    "BOUNCE-BOOST": (3.5,  25)
 }
 
 # faster ways of writing dashes with "none"
 MOVEMENT_SHORTCUTS = {
-    "DASH-LEFT": "DASH-NONE-LEFT",
-    "DASH-RIGHT": "DASH-NONE-RIGHT",
-    "DASH-DOWN": "DASH-DOWN-NONE",
-    "DASH-UP": "DASH-UP-NONE",
+    "DASH-LEFT": "DASH-NONE-LEFT,",
+    "DASH-RIGHT": "DASH-NONE-RIGHT,",
+    "DASH-DOWN": "DASH-DOWN-NONE,",
+    "DASH-UP": "DASH-UP-NONE,",
 }
 
 changed_INVERSION_BOOST = 1.50

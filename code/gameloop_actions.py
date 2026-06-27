@@ -1,15 +1,16 @@
 from math import ceil
 from pyinputplus import inputInt
+from re import sub, escape
 
 from attack_func import evaluate_card, evaluate_multipliers, attack_player
-from movement_func import chunk_split_movement, evaluate_movement_chunks, evaluate_tech_list, get_tech_modifiers, get_player_passive
-from passive_tech import super_hyper_passive_tech, bhop_passive_tech
+from movement_func import chunk_split_movement, evaluate_movement_chunks, evaluate_tech_list, get_player_passive
 from printing_func import print_hand, print_players, print_movement_table
-from vector2_func import vector2_add, vector2_mult, vector2_dir
+from tech_func import super_hyper_passive_tech, bhop_passive_tech, active_tech
+from vector2_func import vector2_mult, vector2_dir
 
 from card_class import Card
 from player_class import Player
-from constants_libraries import (STYLE_LIB, SUIT_LIB, MOVEMENT_LIB, TECH_SPEED_LIB, MOVEMENT_SHORTCUTS,
+from constants_libraries import (STYLE_LIB, SUIT_LIB, MOVEMENT_LIB, MOVEMENT_SHORTCUTS,
                                  INVERSION_BOOST_X, INVERSION_BOOST_Y, MIN_GENERATED_CARD_RANK, STACK_RANK_LIMIT,
                                  PARRY_LONGEVITY, SUIT_PENALTY, IDENTICAL_BOOST, MIN_MOVE, SPEED_IMPACT)
 
@@ -208,7 +209,7 @@ def drop_half_cards(player: Player) -> bool:
     modified: bool = False
     matched_keys = get_player_passive(player, "B-HOP")
     if matched_keys:
-        drop_bonus = bhop_passive_tech(player, matched_keys, "drop_half_cards")
+        drop_bonus = bhop_passive_tech(player, matched_keys, use="drop_half_cards")
         if drop_bonus >= 1:
             modified = True
 
@@ -231,7 +232,7 @@ def drop_half_cards(player: Player) -> bool:
 def defend(player: Player, def_stacks: int):
     matched_keys = get_player_passive(player, "B-HOP")
     if matched_keys:
-        def_bonus = bhop_passive_tech(player, matched_keys, "defend")
+        def_bonus = bhop_passive_tech(player, matched_keys, use="defend")
         def_stacks += def_bonus
 
     player.defending += def_stacks
@@ -252,15 +253,13 @@ def move_player(player: Player) -> float:
             print("Invalid length of input, try again...")
             continue
         for k, v in MOVEMENT_SHORTCUTS.items():
-            move_seq = move_seq.replace(k, v)
+            move_seq = sub(escape(k) + r'(?!-)', v, move_seq)
 
-        move_list = move_seq.split(",")
+        move_list = [item.strip() for item in move_seq.split(",") if item.strip()]
         if not 0 < len(move_list) <= max_moves:
             print(f"Invalid selection length, keep amount of actions under {max_moves}, try again...")
             continue
         for idx, item in enumerate(move_list):
-            item = item.strip()
-            move_list[idx] = item
             if item not in MOVEMENT_LIB.keys():
                 print(f"Problematic item: {item}, Invalid structure, example: STALL,DASH-DOWN-LEFT,JUMP,...")
                 valid_entry = False
@@ -278,113 +277,7 @@ def move_player(player: Player) -> float:
     if len(tech_list) > 0:
         evaluate_tech_list(tech_list, player)
 
-    active_tech = player.active_tech
-    if "SUPER" in player.active_tech or "HYPER" in active_tech:
-        active_tech, modifiers_list, chain_len = get_tech_modifiers(active_tech)
-        plr_dir_x, plr_dir_y = vector2_dir(player.speed)
-        plr_dir_x = 1 if plr_dir_x == 0 else plr_dir_x
-
-        x, y = TECH_SPEED_LIB[active_tech]
-
-        extension = 1.45 if "EXTENDED" in modifiers_list else 1
-        slide = 1.55 if "SLIDE" in modifiers_list else 1
-        chain_mult = 1 + 1.10 * chain_len
-
-        hyper_boost_x = x * plr_dir_x * extension * slide * chain_mult
-        hyper_boost_y = y * (extension // 2.4) * chain_mult
-        hyper_boost = (hyper_boost_x, hyper_boost_y)
-
-        player.speed = vector2_add(player.speed, hyper_boost)
-        print(f" - {player.name}'s speed has been influenced via a {active_tech.lower()} active tech")
-        player.transfer_active_tech()
-        velocity_modifier /= slide
-
-    elif "ULTRA" in active_tech:
-        active_tech, modifiers_list, chain_len = get_tech_modifiers(active_tech)
-
-        x, y = TECH_SPEED_LIB[active_tech]
-
-        extension = 2 * 0.50 if "EXTENDED" in modifiers_list else 0
-        chain_mult = 1 + 1.10 * chain_len
-
-        ultra_mult_x = (x + extension) * chain_mult
-        ultra_mult_y = y * chain_mult
-        ultra_mult = (ultra_mult_x, ultra_mult_y)
-
-        player.speed = vector2_mult(player.speed, ultra_mult)
-        print(f" - {player.name}'s speed has been influenced via an ultra active tech")
-        player.transfer_active_tech()
-
-    elif "B-HOP" in active_tech and player.speed_value() > 0:
-        active_tech, modifiers_list, chain_len = get_tech_modifiers(active_tech)
-        plr_dir_x, plr_dir_y = vector2_dir(player.speed)
-
-        x, y = TECH_SPEED_LIB[active_tech]
-
-        extension = 1.2 if "EXTENDED" in modifiers_list else 1
-        high_jump = 0.85 if "HIGH-JUMP" in modifiers_list else 0
-        chain_mult = 1 + 1.10 * chain_len
-
-        b_hop_boost_x = x * plr_dir_x * extension * chain_mult
-        b_hop_boost_y = (y + high_jump) * extension * chain_mult
-        b_hop_boost = (b_hop_boost_x, b_hop_boost_y)
-
-        player.speed = vector2_add(player.speed, b_hop_boost)
-        print(f" - {player.name}'s speed has been influenced via a b-hop active tech")
-        player.transfer_active_tech()
-        velocity_modifier /= (1.25 + (extension // 3) + (high_jump // 3))
-
-    elif "FALL-BOOST" in active_tech:
-        active_tech, modifiers_list, chain_len = get_tech_modifiers(active_tech)
-        plr_dir_x, plr_dir_y = vector2_dir(player.speed)
-        plr_dir_x *= -1  # inverting, FALL-BOOST decreases horizontal speed
-
-        x, y = TECH_SPEED_LIB[active_tech]
-
-        slow_fall = 0.80 if "SLOW-FALL" in modifiers_list else 1
-        fast_fall = 1.50 if "FAST-FALL" in modifiers_list else 1
-        chain_mult = 1 + 1.10 * chain_len
-
-        fall_boost_x = x * plr_dir_x * chain_mult
-        fall_boost_y = y * slow_fall * fast_fall * chain_mult
-        fall_boost = (fall_boost_x, fall_boost_y)
-
-        player.speed = vector2_add(player.speed, fall_boost)
-        print(f" - {player.name}'s speed has been influenced via a fall-boost active tech")
-        player.transfer_active_tech()
-
-        if slow_fall > 1:
-            player.defending += 1
-            print(f" - {player.name}'s defense stacks have been increased by 1 via slow-falling")
-        elif fast_fall > 1:
-            def_change = 1 if player.defending >= 1 else 0
-            player.defending -= def_change
-            print(f" - {player.name}'s defense stacks have been decreased by {def_change} via fast-falling")
-
-    elif "BOUNCE-BOOST" in active_tech:
-        active_tech, modifiers_list, chain_len = get_tech_modifiers(active_tech)
-        plr_dir_x, plr_dir_y = vector2_dir(player.speed)
-        plr_dir_x *= -1  # inverting, BOUNCE-BOOST decreases horizontal speed
-
-        x, y = TECH_SPEED_LIB[active_tech]
-
-        extension = 0.70 if "EXTENDED" in modifiers_list else 0
-        high_jump = 0.85 if "HIGH-JUMP" in modifiers_list else 0
-        chain_mult = 1 + 1.10 * chain_len
-
-        bounce_boost_x = (x - extension) * plr_dir_x * chain_mult
-        bounce_boost_y = y * (1 + extension + high_jump) * chain_mult
-        bounce_boost = (bounce_boost_x, bounce_boost_y)
-
-        player.speed = vector2_add(player.speed, bounce_boost)
-        print(f" - {player.name}'s speed has been influenced via a bounce-boost active tech")
-        player.transfer_active_tech()
-
-        if high_jump > 0:
-            def_change = int(bounce_boost_y // SPEED_IMPACT)
-            def_change = def_change if player.defending > def_change else player.defending
-            player.defending -= def_change
-            print(f" - {player.name}'s defense stacks have been decreased by {def_change} via high-jumping")
+    velocity_modifier = active_tech(player, velocity_modifier)
 
     curr_dir = vector2_dir(vector=player.speed)
     if prev_dir[0] != curr_dir[0] and prev_dir[0] != 0 and curr_dir[0] != 0:

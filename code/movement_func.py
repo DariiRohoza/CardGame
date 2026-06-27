@@ -1,5 +1,8 @@
+from itertools import product
+
 from vector2_func import vector2_add, vector2_mult, vector2_dir
 
+from move_tech_class import MoveTech
 from player_class import Player
 from constants_libraries import MARK_LIB, MOVEMENT_LIB, MOVEMENT_TECH_LIB
 
@@ -22,11 +25,12 @@ def chunk_split_movement(movement: list[str]) -> list[tuple]:
             i += 1
     return movement_chunks
 
-def evaluate_movement_chunks(movement_chunks: list[tuple], player: Player) -> list[str]:
-    tech_list = []
+def evaluate_movement_chunks(movement_chunks: list[tuple], player: Player) -> list[MoveTech]:
+    tech_list: list[MoveTech] = []
     for chunk in movement_chunks:
         if chunk in MOVEMENT_TECH_LIB.keys():
-            tech_list.append(MOVEMENT_TECH_LIB[chunk])
+            tech, modifiers, chain_count = MOVEMENT_TECH_LIB[chunk]
+            tech_list.append(MoveTech(tech, modifiers, chain_count))
         for move in chunk:
             move_vector = MOVEMENT_LIB[move][0]
 
@@ -42,45 +46,49 @@ def evaluate_movement_chunks(movement_chunks: list[tuple], player: Player) -> li
             player.speed = vector2_add(player.speed, move_vector)
     return tech_list
 
-def evaluate_tech_list(tech_list: list[str], player: Player):
+def evaluate_tech_list(tech_list: list[MoveTech], player: Player):
     for i in range(len(tech_list)):
-        if tech_list[i] == player.active_tech:
-            player.active_tech += " \\ CHAIN"
-            print(f" <*> CHAIN modifier added to {player.name}'s active tech ({player.active_tech})")
+        if player.active_tech is None:
+            player.transfer_active_tech(tech_list[i])
             continue
-        player.transfer_active_tech(tech_list[i])
+        if tech_list[i] == player.active_tech:
+            player.active_tech.add_chain()
+            print(f" <*> CHAIN modifier added to {player.name}'s active tech ({player.active_tech})")
 
-def get_player_passive(player: Player, string: str) -> list[tuple]:
-    matched_keys = [(key, value) for key, value in player.passive_tech.items() if string in key]
+def get_player_passive(player: Player, string: str) -> list[MoveTech]:
+    matched_keys = [t for t in player.passive_tech if t.tech == string.upper()]
     return matched_keys
 
-def get_tech_modifiers(active_tech: str):
-    active_tech, modifiers_list, chain_len = active_tech, [], 0
-    if " \\ " in active_tech:
-        active_tech, chain = active_tech.split(" \\ ", maxsplit=1)
-        chain_len = len(chain.split(" \\ "))
-    if " : " in active_tech:
-        active_tech, modifiers = active_tech.split(" : ", maxsplit=1)
-        modifiers_list = modifiers.split(" | ")
-    return active_tech, modifiers_list, chain_len
-
-def unpack_mtl(dct: dict[tuple, str]) -> dict[tuple, str]:
+def unpack_mtl(dct: dict[tuple, tuple]) -> dict[tuple, tuple]:
     unpacked_dct = {}
-    for key in dct.keys():
-        key_symbols: list[str] = [sym for sym in MARK_LIB.keys() if sym in " ".join(key)]
-        if not key_symbols:
-            unpacked_dct[key] = dct[key]
+
+    for key, value in dct.items():
+        # Find all element indices that contain a '*'
+        star_indices = [i for i, elem in enumerate(key) if "*" in elem]
+
+        if not star_indices:
+            unpacked_dct[key] = value
             continue
-        prev = None
-        for sym in key_symbols:
-            if sym == "<" and prev is not None:
-                sym = prev
-            prev = sym
-            if sym == "*":
-                for item in MARK_LIB[sym]:
-                    joined_key = " ".join(key)
-                    modified_key = tuple(joined_key.replace(sym, item).split(" "))
-                    unpacked_dct[modified_key] = dct[key]
+
+        # Generate every combination of LEFT/RIGHT for each independent '*'
+        for combo in product(MARK_LIB["*"], repeat=len(star_indices)):
+            star_values = dict(zip(star_indices, combo))
+            new_key = list(key)
+
+            # Replace each '*' with its assigned value
+            for i, val in star_values.items():
+                new_key[i] = new_key[i].replace("*", val)
+
+            # Replace each '<' with the most recent '*' value to its left
+            last_star_value = None
+            for i in range(len(key)):
+                if i in star_values:
+                    last_star_value = star_values[i]
+                elif "<" in key[i] and last_star_value is not None:
+                    new_key[i] = key[i].replace("<", last_star_value)
+
+            unpacked_dct[tuple(new_key)] = value
+
     return unpacked_dct
 
 
