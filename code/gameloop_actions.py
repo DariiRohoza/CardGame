@@ -9,8 +9,9 @@ from vector2_func import vector2_add, vector2_mult, vector2_dir
 
 from card_class import Card
 from player_class import Player
-from constants_libraries import (STYLE_LIB, SUIT_LIB, MOVEMENT_LIB, TECH_SPEED_LIB, MIN_GENERATED_CARD_RANK,
-                                 STACK_RANK_LIMIT, PARRY_LONGEVITY, SUIT_PENALTY, IDENTICAL_BOOST, MIN_MOVE, SPEED_IMPACT)
+from constants_libraries import (STYLE_LIB, SUIT_LIB, MOVEMENT_LIB, TECH_SPEED_LIB, MOVEMENT_SHORTCUTS,
+                                 INVERSION_BOOST_X, INVERSION_BOOST_Y, MIN_GENERATED_CARD_RANK, STACK_RANK_LIMIT,
+                                 PARRY_LONGEVITY, SUIT_PENALTY, IDENTICAL_BOOST, MIN_MOVE, SPEED_IMPACT)
 
 
 def attack_turn(player: Player, player_list: list[Player]):
@@ -21,8 +22,7 @@ def attack_turn(player: Player, player_list: list[Player]):
     print(f" > Pick a target for your attack")
     print_players(player_list, player)
     while True:
-        target_idx: int = inputInt(prompt="Pick a target player by their index : ", min=0,
-                                   max=len(player_list) - 1)
+        target_idx: int = inputInt(prompt="Pick a target player by their index : ", min=0, max=len(player_list) - 1)
         target: Player = player_list[target_idx]
         print(f"The target you chose : {target}")
         if input(f"Input \"retry\" if you wish to pick a different target: ").lower() == "retry":
@@ -251,6 +251,9 @@ def move_player(player: Player) -> float:
         if len(move_seq) <= 0:
             print("Invalid length of input, try again...")
             continue
+        for k, v in MOVEMENT_SHORTCUTS.items():
+            move_seq = move_seq.replace(k, v)
+
         move_list = move_seq.split(",")
         if not 0 < len(move_list) <= max_moves:
             print(f"Invalid selection length, keep amount of actions under {max_moves}, try again...")
@@ -261,12 +264,14 @@ def move_player(player: Player) -> float:
             if item not in MOVEMENT_LIB.keys():
                 print(f"Problematic item: {item}, Invalid structure, example: STALL,DASH-DOWN-LEFT,JUMP,...")
                 valid_entry = False
+
         if not valid_entry:
             continue
         break
 
-    prev_vector = player.print_speed(True)
+    prev_vector = player.print_speed(units=True)
     prev_speed = player.speed_value()
+    prev_dir = vector2_dir(vector=player.speed)
 
     movement_chunks = chunk_split_movement(move_list)
     tech_list = evaluate_movement_chunks(movement_chunks, player)
@@ -381,8 +386,21 @@ def move_player(player: Player) -> float:
             player.defending -= def_change
             print(f" - {player.name}'s defense stacks have been decreased by {def_change} via high-jumping")
 
+    curr_dir = vector2_dir(vector=player.speed)
+    if prev_dir[0] != curr_dir[0] and prev_dir[0] != 0 and curr_dir[0] != 0:
+        dir_changed: int = 0
+    elif prev_dir[1] != curr_dir[1] and prev_dir[1] != 0 and curr_dir[1] != 0:
+        dir_changed: int = 1
+    else:
+        dir_changed: int = -1
+
+    if prev_speed < player.speed_value() and dir_changed in [0, 1]:
+        dv = INVERSION_BOOST_X if dir_changed == 0 else INVERSION_BOOST_Y
+        player.speed = vector2_mult(player.speed, dv)
+        print(f" - {player.name} performed and INVERSION BOOST, multipliers (x: {dv[0]}, y: {dv[1]})")
+
     print(f"{player.name}'s speed change:\n"
-          f" --> {prev_vector} --> {player.print_speed(True)}\n"
+          f" --> {prev_vector} --> {player.print_speed(units=True)}\n"
           f" --> {prev_speed:,.2f} m/s --> {player.speed_value():,.2f} m/s\n")
     return velocity_modifier
 

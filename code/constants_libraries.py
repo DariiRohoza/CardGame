@@ -66,6 +66,19 @@ TECH_SPEED_LIB = {
     "BOUNCE-BOOST":   (3.5,  25)
 }
 
+# faster ways of writing dashes with "none"
+MOVEMENT_SHORTCUTS = {
+    "DASH-LEFT": "DASH-NONE-LEFT",
+    "DASH-RIGHT": "DASH-NONE-RIGHT",
+    "DASH-DOWN": "DASH-DOWN-NONE",
+    "DASH-UP": "DASH-UP-NONE",
+}
+
+changed_INVERSION_BOOST = 1.50
+other_INVERSION_BOOST = 1.15
+INVERSION_BOOST_X = (changed_INVERSION_BOOST, other_INVERSION_BOOST)
+INVERSION_BOOST_Y = (other_INVERSION_BOOST, changed_INVERSION_BOOST)
+
 # table printing
 CARD_PRINT = [("Index", 7), ("Style", 20), ("Rank Suit", 11)]
 PLAYER_PRINT = [("Index", 7), ("Name", 9), ("Health", 8), ("Defense", 9), ("Atk. Stack", 12),

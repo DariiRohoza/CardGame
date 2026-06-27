@@ -90,7 +90,8 @@ class GameLoop:
 
             if curr_player.speed_value() > 0 and self.action_counter == 0 and not no_decay:
                 vector2_decay(curr_player, velocity_modifier, velocity_modifier)
-                print(f">>> Applied velocity decay to {curr_player.name}\n")
+                print(f">>> Applied velocity decay to {curr_player.name} "
+                      f"final speed : {curr_player.speed_value():,.2f})\n")
 
             if curr_player.parry_time > 0 and self.action_counter == 0:
                 curr_player.parry_time -= 1

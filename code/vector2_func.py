@@ -19,7 +19,7 @@ def vector2_mult(vector1: tuple, vector2: tuple):
     vector1 = (speed_x, speed_y)
     return vector1
 
-def vector2_dir(vector): # returns a pair of values, can only be 0, 1 or -1
+def vector2_dir(vector: tuple[float, float]): # returns a pair of values, can only be 0, 1 or -1
     vector_x, vector_y = vector
     dir_x = (vector_x > 0) - (vector_x < 0)
     dir_y = (vector_y > 0) - (vector_y < 0)
