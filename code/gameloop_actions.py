@@ -30,7 +30,7 @@ def attack_turn(player: Player, player_list: list[Player]):
             continue
         break
 
-    print(f" > {player.name} has decided to attack {target.name} using: {user_chosen_card}")
+    print(f"\n > {player.name} has decided to attack {target.name} using: {user_chosen_card}")
     attack_player(user_chosen_card, player, target)
 
     player.move_to_deck(user_chosen_card)
@@ -111,8 +111,8 @@ def refurbish_card_suit(player: Player):
         if user_card.suit == chosen_suit:
             print(f"New suit cannot be the same as initial suit, pick a different suit")
             continue
-        print(f"The target you chose : {chosen_suit}")
-        if input(f"Input \"retry\" if you wish to pick a different target: ").lower() == "retry":
+        print(f"The suit you chose : {chosen_suit}")
+        if input(f"Input \"retry\" if you wish to pick a different suit: ").lower() == "retry":
             continue
         break
 
