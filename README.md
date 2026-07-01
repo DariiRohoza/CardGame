@@ -49,3 +49,42 @@ Assuming you have already been able to launch the game, follow these steps:
 | MIN_WEAKNESS_CRITICAL   | Minimum additional defense stacks removed from the target if the attacking card has the same suit as the target's weakness.                                                                                       |
 
 Do not change the variables above the ACTION_MULTIPLIER unless you know what you're doing, it is key those stay the way they are.
+
+## Tips & Tricks
+Printing players and printing your own hand can be used without action cost.
+
+#### Attack Player
+1. If the opponent has lots of defense, you can attack them with cards they are weak against, draining the defense they have until you can use a strong card to deal a lot of damage.
+2. Going faster than your opponent increases your damage and decreses theirs.
+
+#### Stack Attack Value
+1. Using cards with higher style values is more efficient than spamming weak cards for stacking value.
+2. Strength gives a 1.5x multiplier for the attack stack, allowing players to get up to 52.5 value from a singular card (given that STACK_RANK_LIMIT = 7).
+
+#### Parrying
+1. Speed modifiers are added before parrying, a stronger parry card will as such be more effective against faster opponents.
+2. Weakness and Strength affect the effectiveness of parrying.
+
+#### Refurbishing Card Suits
+1. This action will remove your weakness if the target suit is the same as your weakness.
+2. It will grant you strength with the chosen suit.
+
+#### Card Rank Increase
+1. Speed is very wffective at buffing this action, to the point that going about 200 m/s will make this action more effective than merging.
+2. This action grants a singular defense stack every time it is activated.
+
+#### Merging Cards
+1. Can be used to slowly cycle your deck unlike rank increasing.
+
+#### Stylize
+1. Style is the most important value for increasing damage and being able to increase it for already strong cards is a good idea.
+
+#### Discarding Cards
+1. Can be used for deck-cycling to regain stronger cards after using them.
+
+#### Defending
+1. The first couple defense stacks are stronger than the rest, as such even a couple defense staxks combined with fast movemenr speed can significantly increse survivability.
+
+#### Movement
+1. Dashes that have "NONE" as one of the direction can have that none and oone of the dashes removed (example: dash-none-left can be weitten as dash-left).
+2. Certain sequences of movements can be used to perform tech that buff movement speed significantly as well as buffing certain actions.
