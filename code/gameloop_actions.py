@@ -98,7 +98,7 @@ def player_parry(player: Player) -> bool:
 def refurbish_card_suit(player: Player):
     print(f" > Pick a card to be refurbished")
     user_card = card_choosing(player, player.hand)
-    player.move_to_deck(user_card)
+    player.hand.remove(user_card)
 
     print(f"> Pick a target suit")
     for key, value in SUIT_LIB.items():
@@ -132,7 +132,7 @@ def refurbish_card_suit(player: Player):
 def increase_card_rank(player: Player):
     print(f" > Pick a card to increase rank of")
     user_card = card_choosing(player, player.hand)
-    player.move_to_deck(user_card)
+    player.hand.remove(user_card)
 
     rank_change = MIN_GENERATED_CARD_RANK
     if player.strength == SUIT_LIB[user_card.suit]:
@@ -157,11 +157,18 @@ def merge_card_rank(player: Player):
           f"If both cards have the same rank and suit, a bonus will be applied\n\n"
           f" > Pick a card to merge")
     user_card_1st = card_choosing(player, player.hand)
-    player.move_to_deck(user_card_1st)
+    player.hand.remove(user_card_1st)
 
     print(f" > Pick another card to merge")
     user_card_2nd = card_choosing(player, player.hand)
-    player.move_to_deck(user_card_2nd)
+    player.hand.remove(user_card_2nd)
+
+    if evaluate_card(user_card_1st, player)[0] > evaluate_card(user_card_2nd, player)[0]:
+        player.hand.append(user_card_1st)
+        player.move_to_deck(user_card_1st) 
+    else:
+        player.hand.append(user_card_2nd)
+        player.move_to_deck(user_card_2nd)
 
     rank_change = 0
     if user_card_1st.suit != user_card_2nd.suit:
@@ -190,7 +197,7 @@ def merge_card_rank(player: Player):
 def stylize_card(player: Player):
     print(f" > Pick a card to increase style of")
     user_card = card_choosing(player, player.hand)
-    player.move_to_deck(user_card)
+    player.hand.remove(user_card)
 
     new_style = user_card.style
     for key, value in STYLE_LIB.items():
